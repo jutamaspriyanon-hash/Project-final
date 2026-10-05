@@ -1609,61 +1609,6 @@ function renderDonutChart() {
     );
 }
 
-        /* =========================
-           LEGEND LEAVE
-        ========================= */
-
-        item.on(
-            "mouseleave",
-            function () {
-
-                paths
-                    .filter(p =>
-                        p.data.Country ===
-                        d.Country
-                    )
-                    .interrupt()
-                    .transition()
-                    .duration(150)
-                    .attr("d", arc);
-
-                hideTooltip();
-            }
-        );
-
-
-        /* =========================
-           LEGEND CLICK
-        ========================= */
-
-        item.on(
-            "click",
-            function () {
-
-                if (
-                    d.Country !==
-                    "Others"
-                ) {
-
-                    selectedCountry =
-                        d.Country;
-
-                    d3.select(
-                        "#countryFilter"
-                    )
-                    .property(
-                        "value",
-                        selectedCountry
-                    );
-
-                    applyFilters();
-                }
-            }
-        );
-
-    });
-}
-
 /* =========================================================
    3. COLUMN CHART
    ========================================================= */
