@@ -4,44 +4,39 @@
 <head>
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Online Retail Analytics Dashboard</title>
 
     <!-- Google Fonts -->
-    <link rel="preconnect"
-          href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    <link rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossorigin>
-
-    <link href="https://fonts.googleapis.com/css2?family=Mali:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Mali:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
 
     <!-- Font Awesome -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- D3.js -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
-    <!-- SheetJS
-         ใช้อ่านไฟล์ .xlsb -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS สำหรับอ่านไฟล์ XLSB -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <!-- CSS -->
-    <link rel="stylesheet"
-          href="styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 
 <body>
 
-    <!-- =====================================================
+    <!-- ==============================
          HEADER
-    ====================================================== -->
+    =============================== -->
 
     <header class="navbar">
 
@@ -65,16 +60,16 @@
     </header>
 
 
-    <!-- =====================================================
+    <!-- ==============================
          MAIN
-    ====================================================== -->
+    =============================== -->
 
     <main class="main-container">
 
 
-        <!-- =================================================
+        <!-- ==============================
              FILTER
-        ================================================== -->
+        =============================== -->
 
         <section class="filter-panel card">
 
@@ -106,9 +101,7 @@
                     <select id="countryFilter">
 
                         <option value="ALL">
-
                             ทุกประเทศ (All Countries)
-
                         </option>
 
                     </select>
@@ -132,21 +125,15 @@
                     <select id="typeFilter">
 
                         <option value="ALL">
-
                             ทุกประเภท (Sale & Return)
-
                         </option>
 
                         <option value="Sale">
-
                             เฉพาะรายการขาย (Sale)
-
                         </option>
 
                         <option value="Return/Cancelled">
-
                             เฉพาะรายการคืนเงิน (Return)
-
                         </option>
 
                     </select>
@@ -170,9 +157,7 @@
                     <select id="yearFilter">
 
                         <option value="ALL">
-
                             ทุกปี
-
                         </option>
 
                     </select>
@@ -196,9 +181,7 @@
                     <select id="monthFilter">
 
                         <option value="ALL">
-
                             ทุกเดือน
-
                         </option>
 
                     </select>
@@ -210,8 +193,9 @@
 
                 <div class="filter-actions">
 
-                    <button id="resetBtn"
-                            class="btn btn-reset">
+                    <button
+                        id="resetBtn"
+                        class="btn btn-reset">
 
                         <i class="fa-solid fa-rotate-left"></i>
 
@@ -227,9 +211,9 @@
 
 
 
-        <!-- =================================================
+        <!-- ==============================
              KPI
-        ================================================== -->
+        =============================== -->
 
         <section class="kpi-grid">
 
@@ -248,16 +232,12 @@
                 <div class="kpi-info">
 
                     <span class="kpi-title">
-
                         มูลค่ารายการรวม
-
                     </span>
 
 
                     <h3 id="kpiTotalSales">
-
                         £0.00
-
                     </h3>
 
                 </div>
@@ -280,16 +260,12 @@
                 <div class="kpi-info">
 
                     <span class="kpi-title">
-
                         จำนวนชิ้นตามรายการ
-
                     </span>
 
 
                     <h3 id="kpiTotalQty">
-
                         0 ชิ้น
-
                     </h3>
 
                 </div>
@@ -312,16 +288,12 @@
                 <div class="kpi-info">
 
                     <span class="kpi-title">
-
                         จำนวนระเบียนรายการ
-
                     </span>
 
 
                     <h3 id="kpiTotalOrders">
-
                         0 รายการ
-
                     </h3>
 
                 </div>
@@ -344,16 +316,12 @@
                 <div class="kpi-info">
 
                     <span class="kpi-title">
-
                         จำนวนประเทศที่มีคำสั่งซื้อ
-
                     </span>
 
 
                     <h3 id="kpiTotalCountries">
-
                         0 ประเทศ
-
                     </h3>
 
                 </div>
@@ -364,22 +332,20 @@
 
 
 
-        <!-- =================================================
+        <!-- ==============================
              CHARTS
-        ================================================== -->
+        =============================== -->
 
         <section class="charts-grid">
 
 
-            <!-- =================================================
+            <!-- ==============================
                  BAR CHART
-            ================================================== -->
+            =============================== -->
 
             <div class="chart-card card">
 
-
                 <div class="chart-header">
-
 
                     <div class="chart-title">
 
@@ -404,60 +370,43 @@
 
                     <div class="local-filter chart-tools">
 
-
                         <label for="localProductMetric">
-
                             แสดงตาม
-
                         </label>
 
 
                         <select id="localProductMetric">
 
                             <option value="value">
-
                                 มูลค่ารายการ (£)
-
                             </option>
 
-
                             <option value="qty">
-
                                 จำนวนชิ้น
-
                             </option>
 
                         </select>
 
 
                         <label for="localProductTop">
-
                             จำนวนสินค้า
-
                         </label>
 
 
                         <select id="localProductTop">
 
                             <option value="5">
-
                                 Top 5
-
                             </option>
 
-
-                            <option value="10"
-                                    selected>
-
+                            <option
+                                value="10"
+                                selected>
                                 Top 10
-
                             </option>
-
 
                             <option value="15">
-
                                 Top 15
-
                             </option>
 
                         </select>
@@ -467,24 +416,22 @@
                 </div>
 
 
-                <div class="chart-wrapper"
-                     id="barChart">
-
+                <div
+                    class="chart-wrapper"
+                    id="barChart">
                 </div>
 
             </div>
 
 
 
-            <!-- =================================================
+            <!-- ==============================
                  DONUT CHART
-            ================================================== -->
+            =============================== -->
 
             <div class="chart-card card">
 
-
                 <div class="chart-header">
-
 
                     <div class="chart-title">
 
@@ -511,33 +458,24 @@
                 <div class="local-filter chart-tools">
 
                     <label for="localDonutTop">
-
                         จำนวนประเทศ
-
                     </label>
 
 
                     <select id="localDonutTop">
 
-                        <option value="5"
-                                selected>
-
+                        <option
+                            value="5"
+                            selected>
                             Top 5 + อื่น ๆ
-
                         </option>
-
 
                         <option value="10">
-
                             Top 10 + อื่น ๆ
-
                         </option>
 
-
                         <option value="999">
-
                             ทุกประเทศ
-
                         </option>
 
                     </select>
@@ -545,24 +483,22 @@
                 </div>
 
 
-                <div class="chart-wrapper"
-                     id="donutChart">
-
+                <div
+                    class="chart-wrapper"
+                    id="donutChart">
                 </div>
 
             </div>
 
 
 
-            <!-- =================================================
+            <!-- ==============================
                  COLUMN CHART
-            ================================================== -->
+            =============================== -->
 
             <div class="chart-card card">
 
-
                 <div class="chart-header">
-
 
                     <div class="chart-title">
 
@@ -602,24 +538,22 @@
                 </div>
 
 
-                <div class="chart-wrapper"
-                     id="columnChart">
-
+                <div
+                    class="chart-wrapper"
+                    id="columnChart">
                 </div>
 
             </div>
 
 
 
-            <!-- =================================================
+            <!-- ==============================
                  SCATTER CHART
-            ================================================== -->
+            =============================== -->
 
             <div class="chart-card card">
 
-
                 <div class="chart-header">
-
 
                     <div class="chart-title">
 
@@ -653,32 +587,22 @@
 
                         <select id="localScatterPrice">
 
-                            <option value="all"
-                                    selected>
-
+                            <option
+                                value="all"
+                                selected>
                                 ทั้งหมด
-
                             </option>
-
 
                             <option value="10">
-
                                 ≤ £10
-
                             </option>
-
 
                             <option value="50">
-
                                 ≤ £50
-
                             </option>
 
-
                             <option value="100">
-
                                 ≤ £100
-
                             </option>
 
                         </select>
@@ -693,39 +617,30 @@
 
                         <select id="localScatterQty">
 
-                            <option value="0"
-                                    selected>
-
+                            <option
+                                value="0"
+                                selected>
                                 ทั้งหมด
-
                             </option>
-
 
                             <option value="2">
-
                                 ≥ 2
-
                             </option>
-
 
                             <option value="5">
-
                                 ≥ 5
-
                             </option>
 
-
                             <option value="10">
-
                                 ≥ 10
-
                             </option>
 
                         </select>
 
 
-                        <button id="resetZoomBtn"
-                                class="btn-sm">
+                        <button
+                            id="resetZoomBtn"
+                            class="btn-sm">
 
                             <i class="fa-solid fa-search-minus"></i>
 
@@ -738,9 +653,9 @@
                 </div>
 
 
-                <div class="chart-wrapper"
-                     id="scatterChart">
-
+                <div
+                    class="chart-wrapper"
+                    id="scatterChart">
                 </div>
 
             </div>
@@ -751,22 +666,29 @@
 
 
 
-    <!-- Tooltip -->
+    <!-- ==============================
+         TOOLTIP
+    =============================== -->
 
-    <div id="tooltip"
-         class="d3-tooltip">
-
+    <div
+        id="tooltip"
+        class="d3-tooltip">
     </div>
 
 
 
     <!-- =====================================================
-         IMPORTANT
+         JAVASCRIPT
          
-         SheetJS ต้องถูกโหลดก่อน app.js
+         สำคัญ:
+         1. โหลด D3 ก่อน
+         2. โหลด SheetJS ก่อน
+         3. โหลด app.js เป็นไฟล์สุดท้าย
+         
+         ห้ามใช้ app_fixed.js
     ====================================================== -->
 
-    <script src="app.js?v=3"></script>
+    <script src="app.js?v=5"></script>
 
 </body>
 
