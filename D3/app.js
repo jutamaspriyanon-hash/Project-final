@@ -1055,6 +1055,21 @@ function renderColumnChart() {
 
     container.html("");
 
+    // Always restore the Sale/Return color legend above this chart.
+    const card = container.node().closest(".chart-card");
+    if (card) {
+        let legend = card.querySelector(".chart-note");
+        if (!legend) {
+            legend = document.createElement("div");
+            legend.className = "chart-note";
+            container.node().parentNode.insertBefore(legend, container.node());
+        }
+        legend.innerHTML =
+            '<span class="legend-dot sale"></span> Sale = รายการขาย' +
+            '<span style="display:inline-block;width:14px"></span>' +
+            '<span class="legend-dot ret"></span> Return = รายการคืน/ยกเลิก';
+    }
+
     const node = container.node();
     const bounds = node.getBoundingClientRect();
 
@@ -1170,11 +1185,10 @@ function renderColumnChart() {
     });
 
     g.append("text")
-        .attr("class", "axis-label")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -height / 2)
-        .attr("y", -58)
+        .attr("class", "axis-label y-axis-title")
+        .attr("transform", `translate(-52,${height / 2}) rotate(-90)`)
         .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
         .style("font-size", "12px")
         .style("font-weight", "600")
         .style("fill", "#806f89")
