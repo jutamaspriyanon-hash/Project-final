@@ -836,148 +836,327 @@ function renderDonutChart() {
     const node = container.node();
     const bounds = node.getBoundingClientRect();
 
-    const fullWidth = Math.max(360, bounds.width || 600);
-    const height = Math.max(350, bounds.height || 350);
+    const fullWidth = Math.max(
+        360,
+        bounds.width || 600
+    );
+
+    const height = Math.max(
+        350,
+        bounds.height || 350
+    );
 
     const donutWidth =
         fullWidth <= 600
             ? Math.floor(fullWidth * 0.56)
             : Math.floor(fullWidth * 0.58);
 
-    const legendWidth = fullWidth - donutWidth - 10;
+    const legendWidth =
+        fullWidth - donutWidth - 10;
+
+
+    /* =====================================================
+       DATA
+    ===================================================== */
 
     const countryRollup = Array.from(
         d3.rollup(
             filteredData,
+
             values => ({
                 Value: d3.sum(
                     values,
                     d => Number(d.LineAmount) || 0
                 ),
+
                 Count: values.length
             }),
+
             d => d.Country
         ),
+
         ([Country, stats]) => ({
             Country,
             Value: stats.Value,
             Count: stats.Count
         })
     )
+
     .filter(d => d.Value > 0)
-    .sort((a, b) => b.Value - a.Value);
+
+    .sort(
+        (a, b) =>
+            b.Value - a.Value
+    );
+
+
+    /* =====================================================
+       NO DATA
+    ===================================================== */
 
     if (!countryRollup.length) {
-        container.append("div")
+
+        container
+            .append("div")
             .style("padding", "80px")
             .style("text-align", "center")
             .text("ไม่มีข้อมูล");
+
         return;
     }
+
+
+    /* =====================================================
+       TOP COUNTRY / OTHERS
+    ===================================================== */
 
     let countryData;
 
     if (localDonutTop === 999) {
-        countryData = countryRollup;
-    } else {
-        const top = countryRollup.slice(0, localDonutTop);
-        const others = countryRollup.slice(localDonutTop);
 
-        countryData = [...top];
+        countryData = countryRollup;
+
+    } else {
+
+        const top =
+            countryRollup.slice(
+                0,
+                localDonutTop
+            );
+
+        const others =
+            countryRollup.slice(
+                localDonutTop
+            );
+
+        countryData = [
+            ...top
+        ];
 
         if (others.length) {
+
             countryData.push({
+
                 Country: "Others",
-                Value: d3.sum(others, d => d.Value),
-                Count: d3.sum(others, d => d.Count)
+
+                Value: d3.sum(
+                    others,
+                    d => d.Value
+                ),
+
+                Count: d3.sum(
+                    others,
+                    d => d.Count
+                )
             });
         }
     }
 
-    const totalValue = d3.sum(
-        countryData,
-        d => Math.max(0, d.Value)
-    );
 
-    /* =========================
-       SVG
-    ========================= */
+    /* =====================================================
+       TOTAL
+    ===================================================== */
 
-    const svg = container.append("svg")
-        .attr("width", donutWidth)
-        .attr("height", height)
-        .attr(
-            "viewBox",
-            `0 0 ${donutWidth} ${height}`
-        )
-        .style("flex", `0 0 ${donutWidth}px`)
-        .style("width", `${donutWidth}px`)
-        .style("height", `${height}px`)
-        .style("overflow", "visible");
-
-    const radius = Math.max(
-        70,
-        Math.min(
-            donutWidth * 0.43,
-            height * 0.40
-        )
-    );
-
-    const centerX = donutWidth / 2;
-    const centerY = height / 2;
-
-    const g = svg.append("g")
-        .attr(
-            "transform",
-            `translate(${centerX},${centerY})`
+    const totalValue =
+        d3.sum(
+            countryData,
+            d => Math.max(
+                0,
+                d.Value
+            )
         );
 
-    /* =========================
-       PIE + ARC
-    ========================= */
 
-    const pie = d3.pie()
-        .sort(null)
-        .value(d => Math.max(0, d.Value));
+    /* =====================================================
+       SVG
+    ===================================================== */
 
-    const arc = d3.arc()
-        .innerRadius(radius * 0.55)
-        .outerRadius(radius);
+    const svg =
+        container
+            .append("svg")
 
-    const hoverArc = d3.arc()
-        .innerRadius(radius * 0.52)
-        .outerRadius(radius * 1.05);
+            .attr(
+                "width",
+                donutWidth
+            )
 
-    const pieData = pie(countryData);
+            .attr(
+                "height",
+                height
+            )
 
-    /* =========================
+            .attr(
+                "viewBox",
+                `0 0 ${donutWidth} ${height}`
+            )
+
+            .style(
+                "flex",
+                `0 0 ${donutWidth}px`
+            )
+
+            .style(
+                "width",
+                `${donutWidth}px`
+            )
+
+            .style(
+                "height",
+                `${height}px`
+            )
+
+            .style(
+                "overflow",
+                "visible"
+            );
+
+
+    /* =====================================================
+       DONUT SIZE
+    ===================================================== */
+
+    const radius =
+        Math.max(
+            70,
+
+            Math.min(
+                donutWidth * 0.43,
+                height * 0.40
+            )
+        );
+
+
+    const centerX =
+        donutWidth / 2;
+
+    const centerY =
+        height / 2;
+
+
+    const g =
+        svg
+            .append("g")
+            .attr(
+                "transform",
+                `translate(${centerX},${centerY})`
+            );
+
+
+    /* =====================================================
+       PIE
+    ===================================================== */
+
+    const pie =
+        d3.pie()
+            .sort(null)
+            .value(
+                d =>
+                    Math.max(
+                        0,
+                        d.Value
+                    )
+            );
+
+
+    /* =====================================================
+       NORMAL ARC
+    ===================================================== */
+
+    const arc =
+        d3.arc()
+            .innerRadius(
+                radius * 0.55
+            )
+            .outerRadius(
+                radius
+            );
+
+
+    /* =====================================================
+       HOVER ARC
+    ===================================================== */
+
+    const hoverArc =
+        d3.arc()
+            .innerRadius(
+                radius * 0.52
+            )
+            .outerRadius(
+                radius * 1.05
+            );
+
+
+    const pieData =
+        pie(countryData);
+
+
+    /* =====================================================
        DONUT
-    ========================= */
+    ===================================================== */
 
-    const paths = g.selectAll(".country-slice")
+    const paths =
+        g.selectAll(
+            ".country-slice"
+        )
+
         .data(
             pieData,
-            d => d.data.Country
+            d =>
+                d.data.Country
         )
+
         .enter()
-        .append("path")
-        .attr("class", "country-slice")
 
-        .attr("fill", d =>
-            d.data.Country === "Others"
-                ? "#CBD5E1"
-                : getCountryColor(d.data.Country)
+        .append("path")
+
+        .attr(
+            "class",
+            "country-slice"
         )
 
-        .attr("stroke", "#ffffff")
-        .attr("stroke-width", 2)
+        /* สี */
+        .attr(
+            "fill",
+            d =>
+                d.data.Country === "Others"
+                    ? "#CBD5E1"
+                    : getCountryColor(
+                        d.data.Country
+                    )
+        )
 
-        /* เริ่มจาก 0 */
-        .attr("d", d =>
-            arc({
-                startAngle: d.startAngle,
-                endAngle: d.startAngle
-            })
+        .attr(
+            "stroke",
+            "#ffffff"
+        )
+
+        .attr(
+            "stroke-width",
+            2
+        )
+
+        /*
+         * สำคัญมาก
+         *
+         * วาด Arc เต็มตั้งแต่แรก
+         * ไม่ใช้ startAngle/endAngle = 0
+         */
+        .attr(
+            "d",
+            arc
+        )
+
+        /*
+         * Animation เริ่มต้น
+         */
+        .attr(
+            "transform",
+            "rotate(-90) scale(0)"
+        )
+
+        .style(
+            "opacity",
+            0
         )
 
         .style(
@@ -989,122 +1168,215 @@ function renderDonutChart() {
         );
 
 
-    /* =========================
-       ⭐ DONUT ANIMATION
-    ========================= */
+    /* =====================================================
+       DONUT ANIMATION
+       SCALE + ROTATE + OPACITY
+    ===================================================== */
 
     paths
+
         .transition()
-        .duration(1200)
-        .delay((d, i) => i * 80)
-        .ease(d3.easeCubicOut)
 
-        .attrTween("d", function (d) {
+        .duration(900)
 
-            const interpolate =
-                d3.interpolateNumber(
-                    d.startAngle,
-                    d.endAngle
-                );
+        .delay(
+            (d, i) =>
+                i * 100
+        )
 
-            return function (t) {
+        .ease(
+            d3.easeBackOut.overshoot(1.1)
+        )
 
-                return arc({
-                    startAngle: d.startAngle,
-                    endAngle: interpolate(t)
-                });
+        .attr(
+            "transform",
+            "rotate(0) scale(1)"
+        )
 
-            };
-        });
+        .style(
+            "opacity",
+            1
+        );
 
 
-    /* =========================
+    /* =====================================================
        HOVER
-    ========================= */
+    ===================================================== */
 
     paths
-        .on("mouseover", function (event, d) {
 
-            d3.select(this)
-                .interrupt()
-                .transition()
-                .duration(150)
-                .attr("d", hoverArc);
+        .on(
+            "mouseover",
+            function (event, d) {
 
-            const percent =
-                totalValue > 0
-                    ? (d.data.Value / totalValue) * 100
-                    : 0;
+                d3.select(this)
+                    .interrupt()
 
-            showTooltip(
-                event,
+                    .transition()
+                    .duration(150)
 
-                `<b>${safeText(d.data.Country)}</b>
-                <br>จำนวนรายการ:
-                ${d3.format(",")(d.data.Count)}
-                <br>มูลค่า:
-                £${d3.format(",.2f")(d.data.Value)}
-                <br>สัดส่วน:
-                ${percent.toFixed(1)}%`
-            );
-        })
-
-        .on("mouseout", function () {
-
-            const element = d3.select(this);
-
-            element
-                .interrupt()
-                .transition()
-                .duration(150)
-                .attr("d", arc);
-
-            hideTooltip();
-        })
+                    .attr(
+                        "d",
+                        hoverArc
+                    );
 
 
-        /* =========================
-           CLICK
-        ========================= */
+                const percent =
+                    totalValue > 0
+                        ? (
+                            d.data.Value /
+                            totalValue
+                        ) * 100
+                        : 0;
 
-        .on("click", function (event, d) {
 
-            if (d.data.Country !== "Others") {
+                showTooltip(
 
-                selectedCountry =
-                    d.data.Country;
+                    event,
 
-                d3.select("#countryFilter")
+                    `<b>${safeText(
+                        d.data.Country
+                    )}</b>
+
+                    <br>
+                    จำนวนรายการ:
+                    ${d3.format(",")(
+                        d.data.Count
+                    )}
+
+                    <br>
+                    มูลค่า:
+                    £${d3.format(",.2f")(
+                        d.data.Value
+                    )}
+
+                    <br>
+                    สัดส่วน:
+                    ${percent.toFixed(1)}%`
+                );
+            }
+        )
+
+
+        .on(
+            "mouseout",
+            function () {
+
+                d3.select(this)
+                    .interrupt()
+
+                    .transition()
+                    .duration(150)
+
+                    .attr(
+                        "d",
+                        arc
+                    );
+
+                hideTooltip();
+            }
+        )
+
+
+        /* =================================================
+           CLICK COUNTRY
+        ================================================= */
+
+        .on(
+            "click",
+            function (event, d) {
+
+                if (
+                    d.data.Country !==
+                    "Others"
+                ) {
+
+                    selectedCountry =
+                        d.data.Country;
+
+
+                    d3.select(
+                        "#countryFilter"
+                    )
                     .property(
                         "value",
                         selectedCountry
                     );
 
-                applyFilters();
+
+                    applyFilters();
+                }
             }
-        });
+        );
 
 
-    /* =========================
+    /* =====================================================
        CENTER TEXT
-    ========================= */
+    ===================================================== */
 
     g.append("text")
-        .attr("text-anchor", "middle")
-        .attr("dy", "-0.15em")
-        .style("font-size", "15px")
-        .style("font-weight", "500")
-        .style("fill", "#64748b")
-        .text("ยอดขาย");
 
-    g.append("text")
-        .attr("text-anchor", "middle")
-        .attr("dy", "1.15em")
-        .style("font-size", "17px")
-        .style("font-weight", "700")
-        .style("fill", "#40364b")
+        .attr(
+            "text-anchor",
+            "middle"
+        )
+
+        .attr(
+            "dy",
+            "-0.15em"
+        )
+
+        .style(
+            "font-size",
+            "15px"
+        )
+
+        .style(
+            "font-weight",
+            "500"
+        )
+
+        .style(
+            "fill",
+            "#64748b"
+        )
+
         .text(
-            `£${d3.format(",.0f")(totalValue)}`
+            "ยอดขาย"
+        );
+
+
+    g.append("text")
+
+        .attr(
+            "text-anchor",
+            "middle"
+        )
+
+        .attr(
+            "dy",
+            "1.15em"
+        )
+
+        .style(
+            "font-size",
+            "17px"
+        )
+
+        .style(
+            "font-weight",
+            "700"
+        )
+
+        .style(
+            "fill",
+            "#40364b"
+        )
+
+        .text(
+            `£${d3.format(",.0f")(
+                totalValue
+            )}`
         );
 
 
@@ -1112,106 +1384,230 @@ function renderDonutChart() {
        LEGEND
     ===================================================== */
 
-    const legend = container.append("div")
-        .attr(
-            "class",
-            "country-legend-panel"
-        )
-        .style(
-            "width",
-            `${Math.max(legendWidth, 120)}px`
-        )
-        .style(
-            "flex",
-            "1 1 auto"
-        );
+    const legend =
+        container
 
+            .append("div")
 
-    countryData.forEach(d => {
-
-        const item = legend.append("div")
             .attr(
                 "class",
-                "country-legend-item"
+                "country-legend-panel"
             )
-            .attr(
-                "title",
-                d.Country
-            )
+
             .style(
-                "cursor",
-                d.Country === "Others"
-                    ? "default"
-                    : "pointer"
+                "width",
+                `${Math.max(
+                    legendWidth,
+                    120
+                )}px`
+            )
+
+            .style(
+                "flex",
+                "1 1 auto"
             );
 
 
-        /* สีของ Legend */
+    /* =====================================================
+       LEGEND ITEMS
+    ===================================================== */
 
-        item.append("span")
-            .attr(
-                "class",
-                "country-legend-dot"
-            )
-            .style(
-                "background",
-                d.Country === "Others"
-                    ? "#CBD5E1"
-                    : getCountryColor(
+    countryData.forEach(
+        d => {
+
+            const item =
+                legend
+
+                    .append("div")
+
+                    .attr(
+                        "class",
+                        "country-legend-item"
+                    )
+
+                    .attr(
+                        "title",
                         d.Country
                     )
-            );
+
+                    .style(
+                        "cursor",
+                        d.Country === "Others"
+                            ? "default"
+                            : "pointer"
+                    );
 
 
-        /* ชื่อประเทศ */
+            /* -----------------------------
+               COLOR DOT
+            ----------------------------- */
 
-        item.append("span")
-            .attr(
-                "class",
-                "country-legend-name"
-            )
-            .text(d.Country);
+            item
 
+                .append("span")
 
-        /* =========================
-           LEGEND HOVER
-        ========================= */
+                .attr(
+                    "class",
+                    "country-legend-dot"
+                )
 
-        item.on(
-            "mouseenter",
-            function (event) {
-
-                paths
-                    .filter(p =>
-                        p.data.Country ===
-                        d.Country
-                    )
-                    .interrupt()
-                    .transition()
-                    .duration(150)
-                    .attr("d", hoverArc);
-
-
-                const percent =
-                    totalValue > 0
-                        ? (d.Value / totalValue) * 100
-                        : 0;
-
-
-                showTooltip(
-                    event,
-
-                    `<b>${safeText(d.Country)}</b>
-                    <br>จำนวนรายการ:
-                    ${d3.format(",")(d.Count)}
-                    <br>มูลค่า:
-                    £${d3.format(",.2f")(d.Value)}
-                    <br>สัดส่วน:
-                    ${percent.toFixed(1)}%`
+                .style(
+                    "background",
+                    d.Country === "Others"
+                        ? "#CBD5E1"
+                        : getCountryColor(
+                            d.Country
+                        )
                 );
-            }
-        );
 
+
+            /* -----------------------------
+               COUNTRY NAME
+            ----------------------------- */
+
+            item
+
+                .append("span")
+
+                .attr(
+                    "class",
+                    "country-legend-name"
+                )
+
+                .text(
+                    d.Country
+                );
+
+
+            /* =================================================
+               LEGEND HOVER
+            ================================================= */
+
+            item.on(
+                "mouseenter",
+                function (event) {
+
+                    paths
+
+                        .filter(
+                            p =>
+                                p.data.Country ===
+                                d.Country
+                        )
+
+                        .interrupt()
+
+                        .transition()
+                        .duration(150)
+
+                        .attr(
+                            "d",
+                            hoverArc
+                        );
+
+
+                    const percent =
+                        totalValue > 0
+                            ? (
+                                d.Value /
+                                totalValue
+                            ) * 100
+                            : 0;
+
+
+                    showTooltip(
+
+                        event,
+
+                        `<b>${safeText(
+                            d.Country
+                        )}</b>
+
+                        <br>
+                        จำนวนรายการ:
+                        ${d3.format(",")(
+                            d.Count
+                        )}
+
+                        <br>
+                        มูลค่า:
+                        £${d3.format(",.2f")(
+                            d.Value
+                        )}
+
+                        <br>
+                        สัดส่วน:
+                        ${percent.toFixed(1)}%`
+                    );
+                }
+            );
+
+
+            /* =================================================
+               LEGEND LEAVE
+            ================================================= */
+
+            item.on(
+                "mouseleave",
+                function () {
+
+                    paths
+
+                        .filter(
+                            p =>
+                                p.data.Country ===
+                                d.Country
+                        )
+
+                        .interrupt()
+
+                        .transition()
+                        .duration(150)
+
+                        .attr(
+                            "d",
+                            arc
+                        );
+
+                    hideTooltip();
+                }
+            );
+
+
+            /* =================================================
+               LEGEND CLICK
+            ================================================= */
+
+            item.on(
+                "click",
+                function () {
+
+                    if (
+                        d.Country !==
+                        "Others"
+                    ) {
+
+                        selectedCountry =
+                            d.Country;
+
+
+                        d3.select(
+                            "#countryFilter"
+                        )
+                        .property(
+                            "value",
+                            selectedCountry
+                        );
+
+
+                        applyFilters();
+                    }
+                }
+            );
+
+        }
+    );
+}
 
         /* =========================
            LEGEND LEAVE
