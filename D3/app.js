@@ -1,4 +1,4 @@
-const DATA_URL = "Online_Retail_Cleaned_Final-1.csv";
+const DATA_URL = "Online_Retail_Cleaned_Final-1.xlsb";
 
 let globalDataset = [];
 let filteredData = [];
@@ -74,62 +74,104 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadData() {
-  // Load the REAL CSV file next to index.html.
-  // Do not silently use embedded_data.js because it may be an old/partial dataset.
-  const loadRows = rows => {
-    globalDataset = rows.map(d => {
-      const date = parseInvoiceDate(d.InvoiceDate);
-      return {
-        Description: d.Description || 'Uncategorized',
-        Quantity: +d.Quantity || 0,
-        UnitPrice: +d.UnitPrice || 0,
-        CustomerID: d.CustomerID,
-        Country: d.Country,
-        TransactionType: d.TransactionType,
-        LineAmount: +d.LineAmount || (+d.Quantity * +d.UnitPrice),
-        InvoiceDate: d.InvoiceDate || '',
-        Date: date,
-        Year: date?.getFullYear() ?? null,
-        Month: date ? date.getMonth() + 1 : null
-      };
-    }).filter(d => d.Date instanceof Date && !Number.isNaN(d.Date.getTime()));
-
-    filteredData = [...globalDataset];
-    populateCountryDropdown();
-    populateYearDropdown();
-    populateMonthDropdown();
-    updateDashboard();
-
-    console.info(`Loaded ${globalDataset.length.toLocaleString()} valid rows from ${DATA_URL}`);
-  };
-
   try {
-    const rows = await d3.csv(DATA_URL);
-    if (!rows.length) throw new Error('CSV file is empty.');
+    const response = await fetch(DATA_URL);
+    if (!response.ok) throw new Error(`ไม่สามารถโหลดไฟล์ได้ (${response.status})`);
+
+    const arrayBuffer = await response.arrayBuffer();
+    if (!arrayBuffer.byteLength) throw new Error("ไฟล์ XLSB ว่าง");
+
+    const workbook = XLSX.read(arrayBuffer, {
+      type: "array",
+      cellDates: false
+    });
+
+    if (!workbook.SheetNames.length) {
+      throw new Error("ไม่พบ Sheet ในไฟล์ XLSB");
+    }
+
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      defval: ""
+    });
+
+    if (!rows.length) {
+      throw new Error("ไม่พบข้อมูลใน Sheet แรกของไฟล์ XLSB");
+    }
+
+    const loadRows = rows => {
+      globalDataset = rows.map(d => {
+        const date = parseInvoiceDate(d.InvoiceDate);
+        return {
+          Description: d.Description || 'Uncategorized',
+          Quantity: +d.Quantity || 0,
+          UnitPrice: +d.UnitPrice || 0,
+          CustomerID: d.CustomerID || '',
+          Country: d.Country || 'Unknown',
+          TransactionType: d.TransactionType || 'Sale',
+          LineAmount: Number.isFinite(+d.LineAmount)
+            ? +d.LineAmount
+            : ((+d.Quantity || 0) * (+d.UnitPrice || 0)),
+          InvoiceDate: d.InvoiceDate || '',
+          Date: date,
+          Year: date?.getFullYear() ?? null,
+          Month: date ? date.getMonth() + 1 : null
+        };
+      }).filter(d =>
+        d.Date instanceof Date &&
+        !Number.isNaN(d.Date.getTime())
+      );
+
+      filteredData = [...globalDataset];
+      populateCountryDropdown();
+      populateYearDropdown();
+      populateMonthDropdown();
+      updateDashboard();
+
+      console.log(`โหลดข้อมูลสำเร็จ ${globalDataset.length.toLocaleString()} รายการ`);
+    };
+
+    console.log("Sheet:", sheetName);
+    console.log("Columns:", Object.keys(rows[0]));
     loadRows(rows);
+
   } catch (err) {
-    console.error(`Cannot load ${DATA_URL}:`, err);
-    const box = document.createElement('div');
-    box.style.cssText = 'position:fixed;inset:20px;z-index:99999;padding:24px;background:#fff1f2;color:#881337;border:1px solid #fecdd3;border-radius:16px;font-family:Sarabun,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.15);';
-    box.innerHTML = `<h2>ไม่สามารถโหลดข้อมูล CSV ได้</h2><p>ต้องวางไฟล์ <b>${DATA_URL}</b> ไว้ในโฟลเดอร์เดียวกับ <b>index.html</b></p><p>${location.protocol === 'file:' ? 'ถ้าเปิด index.html ด้วยการดับเบิลคลิก ให้เปิดผ่าน Live Server แทน เพราะเบราว์เซอร์อาจบล็อกการอ่าน CSV' : 'ตรวจสอบชื่อไฟล์และตำแหน่งไฟล์อีกครั้ง'}</p><small>${String(err?.message || err)}</small>`;
-    document.body.appendChild(box);
+    console.error("โหลด XLSB ไม่สำเร็จ:", err);
+    showDataLoadError(err);
   }
 }
 
 function parseInvoiceDate(value) {
-  if (!value) return null;
-  const raw = String(value).trim();
-  const withAmPm = d3.timeParse('%m/%d/%Y %I:%M:%S %p')(raw)
-    || d3.timeParse('%m/%d/%Y %I:%M %p')(raw);
-  if (withAmPm) return withAmPm;
-  return d3.timeParse('%m/%d/%Y %H:%M:%S')(raw)
-    || d3.timeParse('%m/%d/%Y %H:%M')(raw);
-}
+  if (value === null || value === undefined || value === '') return null;
 
-const MONTH_NAMES_TH = [
-  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
-  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
-];
+  // Excel serial date used by XLSB when cellDates:false.
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+  }
+
+  if (value instanceof Date) return value;
+
+  const raw = String(value).trim();
+
+  const formats = [
+    "%m/%d/%Y %I:%M:%S %p",
+    "%m/%d/%Y %I:%M %p",
+    "%m/%d/%Y %H:%M:%S",
+    "%m/%d/%Y %H:%M",
+    "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M"
+  ];
+
+  for (const format of formats) {
+    const date = d3.timeParse(format)(raw);
+    if (date) return date;
+  }
+
+  const nativeDate = new Date(raw);
+  return Number.isNaN(nativeDate.getTime()) ? null : nativeDate;
+}
 
 function populateYearDropdown() {
   const years = Array.from(new Set(globalDataset.map(d => d.Year).filter(Boolean))).sort((a,b) => a-b);
