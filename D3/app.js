@@ -318,141 +318,470 @@ function renderBarChart() {
 }
 
 // 2. Donut Chart — Country Share
+// =========================================================
+// 2. Donut Chart — Country Share
+// FIX: Responsive / ไม่ให้โดนตัดด้านข้าง
+// =========================================================
+
 function renderDonutChart() {
-  const container = d3.select("#donutChart");
-  container.html("");
 
-  const bounds = container.node().getBoundingClientRect();
-  const width = bounds.width;
-  const height = bounds.height;
-  const donutWidth = Math.min(width * 0.62, 430);
-  const radius = Math.min(donutWidth * 0.38, height * 0.40);
+    const container = d3.select("#donutChart");
 
-  const donutDataset = filteredData;
-  const totalValue = d3.sum(donutDataset, d => d.LineAmount);
+    // ล้างกราฟเก่า
+    container.html("");
 
-  const countryRollup = Array.from(
-    d3.rollup(donutDataset, v => ({
-      Value: d3.sum(v, d => d.LineAmount),
-      Count: v.length
-    }), d => d.Country),
-    ([Country, stats]) => ({ Country, ...stats })
-  ).sort((a, b) => b.Value - a.Value);
+    const node = container.node();
 
-  // Register colors before slicing so every country keeps the same color.
-  countryRollup.forEach(d => getCountryColor(d.Country));
+    if (!node) return;
 
-  let countryData = countryRollup.slice(0, localDonutTop);
-  const others = countryRollup.slice(localDonutTop);
-  const othersValue = d3.sum(others, d => d.Value);
-  const othersCount = d3.sum(others, d => d.Count);
-  if (others.length && othersValue > 0) {
-    countryData.push({ Country: 'Others', Value: othersValue, Count: othersCount });
-  }
+    // ขนาดพื้นที่จริงของกราฟ
+    const bounds = node.getBoundingClientRect();
 
-  // SVG is reserved for the donut itself. The legend is a real HTML panel
-  // so a long country list can scroll instead of overflowing the card.
-  const svg = container.append("svg")
-    .attr("width", donutWidth)
-    .attr("height", height)
-    .attr("viewBox", `0 0 ${donutWidth} ${height}`)
-    .style("display", "block");
+    const width = Math.max(bounds.width, 300);
+    const height = Math.max(bounds.height, 320);
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${donutWidth * 0.50},${height / 2})`);
+    // ใช้ขนาดที่เล็กกว่าเพื่อให้วงกลมอยู่ครบ
+    const radius = Math.min(
+        width / 2,
+        height / 2
+    ) - 35;
 
-  const pie = d3.pie().value(d => Math.max(0, d.Value)).sort(null);
-  const arc = d3.arc().innerRadius(radius * 0.58).outerRadius(radius);
-  const hoverArc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius * 1.05);
+    // ป้องกัน radius เล็กเกินไป
+    const safeRadius = Math.max(radius, 70);
 
-  const paths = g.selectAll(".country-slice")
-    .data(pie(countryData))
-    .enter()
-    .append("path")
-    .attr("class", "country-slice")
-    .attr("fill", d => d.data.Country === 'Others' ? '#CBD5E1' : getCountryColor(d.data.Country))
-    .style("cursor", d => d.data.Country === 'Others' ? 'default' : 'pointer')
-    .each(function(d) { this._current = { startAngle: d.startAngle, endAngle: d.startAngle }; })
-    .transition()
-    .duration(800)
-    .delay((d, i) => i * 55)
-    .ease(d3.easeCubicOut)
-    .attrTween("d", function(d) {
-      const i = d3.interpolate(this._current, d);
-      this._current = i(1);
-      return t => arc(i(t));
-    });
 
-  paths.selection()
-    .on("mouseover", function(event, d) {
-      const pct = totalValue !== 0 ? Math.abs(d.data.Value / totalValue * 100) : 0;
-      d3.select(this).transition().duration(180).attr("d", hoverArc(d));
-      showTooltip(event, `<b>${d.data.Country}</b><br/>จำนวนรายการ: ${d3.format(",")(d.data.Count)}<br/>มูลค่า: £${d3.format(",.2f")(d.data.Value)}<br/>สัดส่วน: ${pct.toFixed(1)}%`);
-    })
-    .on("mouseout", function(event, d) {
-      d3.select(this).transition().duration(180).attr("d", arc(d));
-      hideTooltip();
-    })
-    .on("click", (event, d) => {
-      if (d.data.Country !== 'Others') {
-        selectedCountry = d.data.Country;
-        d3.select('#countryFilter').property('value', selectedCountry);
-        applyFilters();
-      }
-    });
+    // =====================================================
+    // DATA
+    // =====================================================
 
-  // Center summary
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("dy", "-0.15em")
-    .style("font-size", "0.78rem")
-    .style("fill", "#64748b")
-    .text("มูลค่ารวม");
+    const donutDataset = filteredData;
 
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("dy", "1.15em")
-    .style("font-size", "1.05rem")
-    .style("font-weight", "700")
-    .style("fill", "#0f172a")
-    .text(`£${d3.format(",.0f")(totalValue)}`);
+    const totalValue = d3.sum(
+        donutDataset,
+        d => Number(d.LineAmount) || 0
+    );
 
-  // Country legend — HTML grid with its own scroll, never allowed to
-  // escape the chart card. Each country keeps its stable color.
-  const legend = container.append("div")
-    .attr("class", "country-legend-panel");
 
-  countryData.forEach((d) => {
-    const item = legend.append("div")
-      .attr("class", "country-legend-item")
-      .style("cursor", d.Country === 'Others' ? 'default' : 'pointer');
+    const countryRollup = Array.from(
 
-    item.append("span")
-      .attr("class", "country-legend-dot")
-      .style("background", d.Country === 'Others' ? '#CBD5E1' : getCountryColor(d.Country));
+        d3.rollup(
+            donutDataset,
 
-    item.append("span")
-      .attr("class", "country-legend-name")
-      .text(d.Country);
+            values => ({
+                Value: d3.sum(
+                    values,
+                    d => Number(d.LineAmount) || 0
+                ),
 
-    item.on("mouseenter", function(event) {
-      paths.filter(p => p.data.Country === d.Country)
-        .transition().duration(150).attr("d", hoverArc);
+                Count: values.length
+            }),
 
-      const pct = totalValue !== 0 ? Math.abs(d.Value / totalValue * 100) : 0;
-      showTooltip(event, `<b>${d.Country}</b><br/>จำนวนรายการ: ${d3.format(",")(d.Count)}<br/>มูลค่า: £${d3.format(",.2f")(d.Value)}<br/>สัดส่วน: ${pct.toFixed(1)}%`);
-    }).on("mouseleave", function() {
-      paths.filter(p => p.data.Country === d.Country)
-        .transition().duration(150).attr("d", arc);
-      hideTooltip();
-    }).on("click", function() {
-      if (d.Country !== 'Others') {
-        selectedCountry = d.Country;
-        d3.select('#countryFilter').property('value', selectedCountry);
-        applyFilters();
-      }
-    });
-  });
+            d => d.Country
+        ),
+
+        ([Country, stats]) => ({
+            Country,
+            ...stats
+        })
+
+    )
+    .sort(
+        (a, b) => b.Value - a.Value
+    );
+
+
+    // =====================================================
+    // ถ้าไม่มีข้อมูล
+    // =====================================================
+
+    if (!countryRollup.length) {
+
+        container
+            .append("div")
+            .style("text-align", "center")
+            .style("padding", "100px 0")
+            .style("color", "#64748b")
+            .text("ไม่มีข้อมูล");
+
+        return;
+    }
+
+
+    // =====================================================
+    // TOP COUNTRY
+    // =====================================================
+
+    countryRollup.forEach(
+        d => getCountryColor(d.Country)
+    );
+
+
+    let countryData;
+
+    if (localDonutTop === 999) {
+
+        countryData =
+            [...countryRollup];
+
+    } else {
+
+        countryData =
+            countryRollup.slice(
+                0,
+                localDonutTop
+            );
+
+        const others =
+            countryRollup.slice(
+                localDonutTop
+            );
+
+        const othersValue =
+            d3.sum(
+                others,
+                d => d.Value
+            );
+
+        const othersCount =
+            d3.sum(
+                others,
+                d => d.Count
+            );
+
+
+        if (
+            others.length &&
+            othersValue > 0
+        ) {
+
+            countryData.push({
+                Country: "Others",
+                Value: othersValue,
+                Count: othersCount
+            });
+
+        }
+    }
+
+
+    // =====================================================
+    // SVG
+    // IMPORTANT:
+    // ใช้ width เต็ม container
+    // =====================================================
+
+    const svg = container
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr(
+            "viewBox",
+            `0 0 ${width} ${height}`
+        )
+        .attr(
+            "preserveAspectRatio",
+            "xMidYMid meet"
+        )
+        .style(
+            "display",
+            "block"
+        )
+        .style(
+            "overflow",
+            "visible"
+        );
+
+
+    // =====================================================
+    // CENTER
+    // =====================================================
+
+    const g = svg
+        .append("g")
+        .attr(
+            "transform",
+            `translate(${width / 2}, ${height / 2})`
+        );
+
+
+    // =====================================================
+    // PIE
+    // =====================================================
+
+    const pie = d3
+        .pie()
+        .value(
+            d => Math.max(
+                0,
+                d.Value
+            )
+        )
+        .sort(null);
+
+
+    // =====================================================
+    // DONUT
+    // =====================================================
+
+    const arc = d3
+        .arc()
+        .innerRadius(
+            safeRadius * 0.58
+        )
+        .outerRadius(
+            safeRadius
+        );
+
+
+    const hoverArc = d3
+        .arc()
+        .innerRadius(
+            safeRadius * 0.55
+        )
+        .outerRadius(
+            safeRadius * 1.04
+        );
+
+
+    // =====================================================
+    // DRAW
+    // =====================================================
+
+    const paths = g
+        .selectAll(".country-slice")
+        .data(
+            pie(countryData)
+        )
+        .enter()
+        .append("path")
+        .attr(
+            "class",
+            "country-slice"
+        )
+        .attr(
+            "fill",
+            d => {
+
+                if (
+                    d.data.Country === "Others"
+                ) {
+
+                    return "#CBD5E1";
+
+                }
+
+                return getCountryColor(
+                    d.data.Country
+                );
+            }
+        )
+        .attr(
+            "stroke",
+            "#ffffff"
+        )
+        .attr(
+            "stroke-width",
+            2
+        )
+        .style(
+            "cursor",
+            "pointer"
+        )
+        .each(
+            function(d) {
+
+                this._current = {
+                    startAngle:
+                        d.startAngle,
+
+                    endAngle:
+                        d.startAngle
+                };
+
+            }
+        );
+
+
+    // =====================================================
+    // ANIMATION
+    // =====================================================
+
+    paths
+        .transition()
+        .duration(800)
+        .delay(
+            (d, i) => i * 55
+        )
+        .ease(
+            d3.easeCubicOut
+        )
+        .attrTween(
+            "d",
+            function(d) {
+
+                const interpolate =
+                    d3.interpolate(
+                        this._current,
+                        d
+                    );
+
+                this._current =
+                    interpolate(1);
+
+                return t =>
+                    arc(
+                        interpolate(t)
+                    );
+            }
+        );
+
+
+    // =====================================================
+    // TOOLTIP
+    // =====================================================
+
+    paths
+        .on(
+            "mouseover",
+            function(event, d) {
+
+                const pct =
+                    totalValue !== 0
+                        ? Math.abs(
+                            d.data.Value /
+                            totalValue *
+                            100
+                        )
+                        : 0;
+
+
+                d3.select(this)
+                    .transition()
+                    .duration(180)
+                    .attr(
+                        "d",
+                        hoverArc(d)
+                    );
+
+
+                showTooltip(
+
+                    event,
+
+                    `<b>${d.data.Country}</b>
+                    <br>จำนวนรายการ: ${d3.format(",")(d.data.Count)}
+                    <br>มูลค่า: £${d3.format(",.2f")(d.data.Value)}
+                    <br>สัดส่วน: ${pct.toFixed(1)}%`
+
+                );
+
+            }
+        )
+
+
+        .on(
+            "mouseout",
+            function(event, d) {
+
+                d3.select(this)
+                    .transition()
+                    .duration(180)
+                    .attr(
+                        "d",
+                        arc(d)
+                    );
+
+                hideTooltip();
+
+            }
+        )
+
+
+        .on(
+            "click",
+            function(event, d) {
+
+                if (
+                    d.data.Country !== "Others"
+                ) {
+
+                    selectedCountry =
+                        d.data.Country;
+
+                    d3.select(
+                        "#countryFilter"
+                    )
+                    .property(
+                        "value",
+                        selectedCountry
+                    );
+
+                    applyFilters();
+                }
+
+            }
+        );
+
+
+    // =====================================================
+    // CENTER TEXT
+    // =====================================================
+
+    g.append("text")
+        .attr(
+            "text-anchor",
+            "middle"
+        )
+        .attr(
+            "dy",
+            "-0.15em"
+        )
+        .style(
+            "font-size",
+            "14px"
+        )
+        .style(
+            "fill",
+            "#64748b"
+        )
+        .style(
+            "pointer-events",
+            "none"
+        )
+        .text(
+            "ยอดขาย"
+        );
+
+
+    g.append("text")
+        .attr(
+            "text-anchor",
+            "middle"
+        )
+        .attr(
+            "dy",
+            "1.15em"
+        )
+        .style(
+            "font-size",
+            "17px"
+        )
+        .style(
+            "font-weight",
+            "700"
+        )
+        .style(
+            "fill",
+            "#0f172a"
+        )
+        .style(
+            "pointer-events",
+            "none"
+        )
+        .text(
+            `£${d3.format(",.0f")(totalValue)}`
+        );
+
 }
 
 // 3. Column Chart
