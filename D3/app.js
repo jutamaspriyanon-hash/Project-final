@@ -42,10 +42,15 @@ const MONTH_NAMES_TH = [
     "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
 ];
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootDashboard() {
     setupEvents();
     loadData();
-});
+}
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootDashboard, { once: true });
+} else {
+    bootDashboard();
+}
 
 /* =========================================================
    HELPERS
@@ -204,6 +209,7 @@ async function ensureLibraries() {
 
 async function loadData() {
     try {
+        console.log("%c D3 Dashboard build 1008 - animation + axes ", "background:#40364b;color:#fff;padding:4px 8px;border-radius:4px");
         console.log("กำลังเตรียม D3 + SheetJS...");
         await ensureLibraries();
         console.log("กำลังโหลด:", DATA_URL);
@@ -660,6 +666,9 @@ function renderBarChart() {
     if (container.empty()) return;
 
     container.html("");
+    container.append("div")
+        .attr("class", "chart-loading")
+        .style("display", "none");
 
     const node = container.node();
     const bounds = node.getBoundingClientRect();
@@ -798,10 +807,18 @@ function renderBarChart() {
             (d, i) => BAR_COLORS[i % BAR_COLORS.length]
         )
         .attr("width", 0)
-        .transition().duration(850).delay((d,i)=>i*55).ease(d3.easeCubicOut)
+        .transition()
+        .duration(900)
+        .delay((d, i) => i * 70)
+        .ease(d3.easeCubicOut)
         .attr(
             "width",
-            d => x(localProductMetric === "qty" ? d.Qty : d.Sales)
+            d =>
+                x(
+                    localProductMetric === "qty"
+                        ? d.Qty
+                        : d.Sales
+                )
         )
         .on("mouseover", (event, d) => {
             showTooltip(
@@ -829,6 +846,13 @@ function renderDonutChart() {
 
     const fullWidth = Math.max(360, bounds.width || 600);
     const height = Math.max(350, bounds.height || 350);
+    container.append("div")
+        .style("text-align", "center")
+        .style("font-size", "12px")
+        .style("font-weight", "600")
+        .style("color", "#806f89")
+        .style("margin-bottom", "4px")
+        .text("X: ประเทศ  |  Y: มูลค่ารายการ (£)");
 
     const donutWidth =
         fullWidth <= 600
@@ -928,10 +952,6 @@ function renderDonutChart() {
         .innerRadius(radius * 0.52)
         .outerRadius(radius * 1.05);
 
-    const startArc = d3.arc()
-        .innerRadius(radius * 0.55)
-        .outerRadius(radius * 0.55);
-
     const pieData = pie(countryData);
 
     const paths = g.selectAll(".country-slice")
@@ -946,25 +966,28 @@ function renderDonutChart() {
         )
         .attr("stroke", "#ffffff")
         .attr("stroke-width", 2)
-        .attr("d", startArc)
-        .style("opacity", 0.15)
+        .attr("d", d3.arc()
+            .innerRadius(radius * 0.55)
+            .outerRadius(radius * 0.55)
+        )
         .style("cursor", d =>
             d.data.Country === "Others"
                 ? "default"
                 : "pointer"
-        );
-
-    paths.transition()
-        .duration(900)
-        .delay((d,i)=>i*70)
+        )
+        .transition()
+        .duration(1000)
+        .delay((d, i) => i * 90)
         .ease(d3.easeCubicOut)
-        .style("opacity",1)
         .attrTween("d", function(d) {
-            const interpolate = d3.interpolate(startArc(d), arc(d));
+            const start = d3.arc()
+                .innerRadius(radius * 0.55)
+                .outerRadius(radius * 0.55);
+            const interpolate = d3.interpolate(start(d), arc(d));
             return t => interpolate(t);
-        });
-
-    paths.on("mouseover", function (event, d) {
+        })
+        .selection()
+        .on("mouseover", function (event, d) {
             d3.select(this)
                 .transition()
                 .duration(120)
@@ -1244,7 +1267,10 @@ function renderColumnChart() {
             "fill",
             d => TYPE_COLORS[d.Type]
         )
-        .transition().duration(850).delay((d,i)=>i*180).ease(d3.easeCubicOut)
+        .transition()
+        .duration(900)
+        .delay((d, i) => i * 180)
+        .ease(d3.easeCubicOut)
         .attr("y", d => y(d.Sales))
         .attr("height", d => height - y(d.Sales))
         .on("mouseover", (event, d) => {
@@ -1419,10 +1445,12 @@ function renderScatterChart() {
                 TYPE_COLORS[d.TransactionType] ||
                 TYPE_COLORS.Sale
         )
-        .attr("opacity", 0)
-        .transition().duration(650).delay((d,i)=>Math.min(i*2,900)).ease(d3.easeCubicOut)
-        .attr("r",4)
-        .attr("opacity",0.68)
+        .attr("opacity", 0.68)
+        .transition()
+        .duration(650)
+        .delay((d, i) => Math.min(i * 2, 900))
+        .ease(d3.easeCubicOut)
+        .attr("r", 4)
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
