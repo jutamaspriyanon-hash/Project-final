@@ -28,31 +28,15 @@ const TYPE_COLORS = {
 };
 
 const BAR_COLORS = [
-    "#9c8be2",
-    "#8b7bd8",
-    "#b18bd1",
-    "#c19bd9",
-    "#edc17f",
-    "#71c6ac",
-    "#d9a6c5",
-    "#a7a0df",
-    "#e5b6c8",
-    "#8fc9b5"
+    "#9c8be2", "#8b7bd8", "#b18bd1", "#c19bd9",
+    "#edc17f", "#71c6ac", "#d9a6c5", "#a7a0df",
+    "#e5b6c8", "#8fc9b5"
 ];
 
 const MONTH_NAMES_TH = [
-    "มกราคม",
-    "กุมภาพันธ์",
-    "มีนาคม",
-    "เมษายน",
-    "พฤษภาคม",
-    "มิถุนายน",
-    "กรกฎาคม",
-    "สิงหาคม",
-    "กันยายน",
-    "ตุลาคม",
-    "พฤศจิกายน",
-    "ธันวาคม"
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน",
+    "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม",
+    "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -68,43 +52,27 @@ function getCountryColor(country) {
     if (!COUNTRY_COLOR_MAP[country]) {
         const index = Object.keys(COUNTRY_COLOR_MAP).length;
         const hue = (index * COUNTRY_HUE_STEP) % 360;
-
         COUNTRY_COLOR_MAP[country] =
             `hsl(${hue.toFixed(1)}, 58%, 58%)`;
     }
-
     return COUNTRY_COLOR_MAP[country];
 }
 
-function getContainerSize(
-    node,
-    fallbackWidth = 600,
-    fallbackHeight = 350
-) {
+function getContainerSize(node, fallbackWidth = 600, fallbackHeight = 350) {
     const bounds = node.getBoundingClientRect();
-
     return {
-        width: Math.max(
-            fallbackWidth,
-            bounds.width || fallbackWidth
-        ),
-        height: Math.max(
-            fallbackHeight,
-            bounds.height || fallbackHeight
-        )
+        width: Math.max(fallbackWidth, bounds.width || fallbackWidth),
+        height: Math.max(fallbackHeight, bounds.height || fallbackHeight)
     };
 }
 
-function addAxisLabel(
-    g,
-    {
-        x = 0,
-        y = 0,
-        text = "",
-        anchor = "middle",
-        rotate = null
-    } = {}
-) {
+function addAxisLabel(g, {
+    x = 0,
+    y = 0,
+    text = "",
+    anchor = "middle",
+    rotate = null
+} = {}) {
     const label = g.append("text")
         .attr("class", "axis-label")
         .attr("x", x)
@@ -116,10 +84,7 @@ function addAxisLabel(
         .text(text);
 
     if (rotate !== null) {
-        label.attr(
-            "transform",
-            `rotate(${rotate},${x},${y})`
-        );
+        label.attr("transform", `rotate(${rotate},${x},${y})`);
     }
 
     return label;
@@ -139,75 +104,58 @@ function safeText(value) {
    ========================================================= */
 
 function setupEvents() {
+    d3.select("#countryFilter").on("change", function () {
+        selectedCountry = this.value;
+        applyFilters();
+    });
 
-    d3.select("#countryFilter")
-        .on("change", function () {
-            selectedCountry = this.value;
-            applyFilters();
-        });
+    d3.select("#typeFilter").on("change", function () {
+        selectedType = this.value;
+        applyFilters();
+    });
 
-    d3.select("#typeFilter")
-        .on("change", function () {
-            selectedType = this.value;
-            applyFilters();
-        });
+    d3.select("#yearFilter").on("change", function () {
+        selectedYear = this.value;
+        selectedMonth = "ALL";
+        populateMonthDropdown();
+        d3.select("#monthFilter").property("value", "ALL");
+        applyFilters();
+    });
 
-    d3.select("#yearFilter")
-        .on("change", function () {
-            selectedYear = this.value;
-            selectedMonth = "ALL";
+    d3.select("#monthFilter").on("change", function () {
+        selectedMonth = this.value;
+        applyFilters();
+    });
 
-            populateMonthDropdown();
+    d3.select("#localProductMetric").on("change", function () {
+        localProductMetric = this.value;
+        renderBarChart();
+    });
 
-            d3.select("#monthFilter")
-                .property("value", "ALL");
+    d3.select("#localProductTop").on("change", function () {
+        localProductTop = Number(this.value);
+        renderBarChart();
+    });
 
-            applyFilters();
-        });
+    d3.select("#localDonutTop").on("change", function () {
+        localDonutTop = Number(this.value);
+        renderDonutChart();
+    });
 
-    d3.select("#monthFilter")
-        .on("change", function () {
-            selectedMonth = this.value;
-            applyFilters();
-        });
+    d3.select("#localScatterPrice").on("change", function () {
+        localScatterPrice = this.value;
+        renderScatterChart();
+    });
 
-    d3.select("#localProductMetric")
-        .on("change", function () {
-            localProductMetric = this.value;
-            renderBarChart();
-        });
+    d3.select("#localScatterQty").on("change", function () {
+        localScatterQty = Number(this.value);
+        renderScatterChart();
+    });
 
-    d3.select("#localProductTop")
-        .on("change", function () {
-            localProductTop = Number(this.value);
-            renderBarChart();
-        });
-
-    d3.select("#localDonutTop")
-        .on("change", function () {
-            localDonutTop = Number(this.value);
-            renderDonutChart();
-        });
-
-    d3.select("#localScatterPrice")
-        .on("change", function () {
-            localScatterPrice = this.value;
-            renderScatterChart();
-        });
-
-    d3.select("#localScatterQty")
-        .on("change", function () {
-            localScatterQty = Number(this.value);
-            renderScatterChart();
-        });
-
-    d3.select("#resetBtn")
-        .on("click", resetDashboard);
+    d3.select("#resetBtn").on("click", resetDashboard);
 
     window.addEventListener("resize", () => {
-        if (globalDataset.length) {
-            renderCharts();
-        }
+        if (globalDataset.length) renderCharts();
     });
 }
 
@@ -216,121 +164,67 @@ function setupEvents() {
    ========================================================= */
 
 async function loadData() {
-
     try {
-
-        console.log(
-            "กำลังโหลด:",
-            DATA_URL
-        );
+        console.log("กำลังโหลด:", DATA_URL);
 
         if (typeof XLSX === "undefined") {
-            throw new Error(
-                "ไม่พบ SheetJS (XLSX)"
-            );
+            throw new Error("ไม่พบ SheetJS (XLSX)");
         }
 
         const response = await fetch(
             DATA_URL + "?v=" + Date.now(),
-            {
-                cache: "no-store"
-            }
+            { cache: "no-store" }
         );
 
         if (!response.ok) {
             throw new Error(
-                "โหลดไฟล์ XLSB ไม่ได้: HTTP " +
-                response.status
+                "โหลดไฟล์ XLSB ไม่ได้: HTTP " + response.status
             );
         }
 
-        const buffer =
-            await response.arrayBuffer();
+        const buffer = await response.arrayBuffer();
 
-        if (
-            !buffer ||
-            buffer.byteLength === 0
-        ) {
-            throw new Error(
-                "ไฟล์ XLSB ว่าง"
-            );
+        if (!buffer || buffer.byteLength === 0) {
+            throw new Error("ไฟล์ XLSB ว่าง");
         }
 
-        console.log(
-            "XLSB size:",
-            buffer.byteLength,
-            "bytes"
-        );
+        console.log("XLSB size:", buffer.byteLength, "bytes");
 
-        const workbook = XLSX.read(
-            buffer,
-            {
-                type: "array",
-                cellDates: true,
-                dense: true
-            }
-        );
+        const workbook = XLSX.read(buffer, {
+            type: "array",
+            cellDates: true,
+            dense: true
+        });
 
-        if (
-            !workbook.SheetNames ||
-            !workbook.SheetNames.length
-        ) {
-            throw new Error(
-                "ไม่พบ Sheet ในไฟล์ XLSB"
-            );
+        if (!workbook.SheetNames || !workbook.SheetNames.length) {
+            throw new Error("ไม่พบ Sheet ในไฟล์ XLSB");
         }
 
-        const sheetName =
-            workbook.SheetNames[0];
-
-        const worksheet =
-            workbook.Sheets[sheetName];
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
 
         if (!worksheet) {
-            throw new Error(
-                "ไม่พบข้อมูลใน Sheet"
-            );
+            throw new Error("ไม่พบข้อมูลใน Sheet");
         }
 
-        console.log(
-            "Sheet:",
-            sheetName
-        );
+        console.log("Sheet:", sheetName);
 
-        const rows =
-            XLSX.utils.sheet_to_json(
-                worksheet,
-                {
-                    defval: "",
-                    raw: true
-                }
-            );
+        const rows = XLSX.utils.sheet_to_json(worksheet, {
+            defval: "",
+            raw: true
+        });
 
         if (!rows.length) {
-            throw new Error(
-                "Sheet ไม่มีข้อมูล"
-            );
+            throw new Error("Sheet ไม่มีข้อมูล");
         }
 
-        console.log(
-            "Rows:",
-            rows.length
-        );
-
-        console.log(
-            "Columns:",
-            Object.keys(rows[0])
-        );
+        console.log("Rows:", rows.length);
+        console.log("Columns:", Object.keys(rows[0]));
 
         convertData(rows);
 
     } catch (error) {
-
-        console.error(
-            "XLSB ERROR:",
-            error
-        );
-
+        console.error("XLSB ERROR:", error);
         showLoadError(error);
     }
 }
@@ -340,149 +234,75 @@ async function loadData() {
    ========================================================= */
 
 function convertData(rows) {
+    globalDataset = rows.map(d => {
+        const quantity = Number(d.Quantity) || 0;
+        const unitPrice = Number(d.UnitPrice) || 0;
 
-    globalDataset = rows
-        .map(d => {
+        let lineAmount = Number(d.LineAmount);
 
-            const quantity =
-                Number(d.Quantity) || 0;
+        if (!Number.isFinite(lineAmount)) {
+            lineAmount = quantity * unitPrice;
+        }
 
-            const unitPrice =
-                Number(d.UnitPrice) || 0;
+        const date = parseInvoiceDate(d.InvoiceDate);
 
-            let lineAmount =
-                Number(d.LineAmount);
+        let transactionType =
+            String(d.TransactionType || "").trim();
 
-            if (
-                !Number.isFinite(
-                    lineAmount
-                )
-            ) {
-                lineAmount =
-                    quantity *
-                    unitPrice;
-            }
-
-            const date =
-                parseInvoiceDate(
-                    d.InvoiceDate
-                );
-
-            let transactionType =
-                String(
-                    d.TransactionType || ""
-                ).trim();
-
-            if (!transactionType) {
-
-                transactionType =
-                    quantity < 0
-                        ? "Return/Cancelled"
-                        : "Sale";
-            }
-
-            const typeLower =
-                transactionType.toLowerCase();
-
+        if (!transactionType) {
             transactionType =
-                typeLower.includes("return") ||
-                typeLower.includes("cancel")
+                quantity < 0
                     ? "Return/Cancelled"
                     : "Sale";
+        }
 
-            return {
+        const typeLower = transactionType.toLowerCase();
 
-                Description:
-                    d.Description ||
-                    "Uncategorized",
+        transactionType =
+            typeLower.includes("return") ||
+            typeLower.includes("cancel")
+                ? "Return/Cancelled"
+                : "Sale";
 
-                Quantity:
-                    quantity,
-
-                UnitPrice:
-                    unitPrice,
-
-                CustomerID:
-                    d.CustomerID,
-
-                Country:
-                    d.Country ||
-                    "Unknown",
-
-                TransactionType:
-                    transactionType,
-
-                LineAmount:
-                    lineAmount,
-
-                InvoiceDate:
-                    d.InvoiceDate,
-
-                Date:
-                    date,
-
-                Year:
-                    date
-                        ? date.getFullYear()
-                        : null,
-
-                Month:
-                    date
-                        ? date.getMonth() + 1
-                        : null
-            };
-
-        })
-        .filter(d =>
-            d.Date instanceof Date &&
-            !Number.isNaN(
-                d.Date.getTime()
-            )
-        );
+        return {
+            Description: d.Description || "Uncategorized",
+            Quantity: quantity,
+            UnitPrice: unitPrice,
+            CustomerID: d.CustomerID,
+            Country: d.Country || "Unknown",
+            TransactionType: transactionType,
+            LineAmount: lineAmount,
+            InvoiceDate: d.InvoiceDate,
+            Date: date,
+            Year: date ? date.getFullYear() : null,
+            Month: date ? date.getMonth() + 1 : null
+        };
+    }).filter(d =>
+        d.Date instanceof Date &&
+        !Number.isNaN(d.Date.getTime())
+    );
 
     if (!globalDataset.length) {
-
         throw new Error(
             "อ่าน XLSB ได้ แต่ไม่พบข้อมูลวันที่ที่ถูกต้อง"
         );
     }
 
-    filteredData =
-        [...globalDataset];
+    filteredData = [...globalDataset];
 
     populateCountryDropdown();
-
     populateYearDropdown();
-
     populateMonthDropdown();
-
     updateDashboard();
 
-    console.log(
-        "================================="
-    );
-
-    console.log(
-        "XLSB LOADED SUCCESSFULLY"
-    );
-
-    console.log(
-        "จำนวนข้อมูล:",
-        globalDataset.length
-    );
-
+    console.log("=================================");
+    console.log("XLSB LOADED SUCCESSFULLY");
+    console.log("จำนวนข้อมูล:", globalDataset.length);
     console.log(
         "ประเทศ:",
-        new Set(
-            globalDataset.map(
-                d => d.Country
-            )
-        ).size
+        new Set(globalDataset.map(d => d.Country)).size
     );
-
-    console.log(
-        "================================="
-    );
+    console.log("=================================");
 }
 
 /* =========================================================
@@ -490,89 +310,50 @@ function convertData(rows) {
    ========================================================= */
 
 function parseInvoiceDate(value) {
-
     if (
         value instanceof Date &&
-        !Number.isNaN(
-            value.getTime()
-        )
+        !Number.isNaN(value.getTime())
     ) {
         return value;
     }
 
-    if (
-        value === null ||
-        value === undefined ||
-        value === ""
-    ) {
+    if (value === null || value === undefined || value === "") {
         return null;
     }
 
-    if (
-        typeof value === "number" &&
-        Number.isFinite(value)
-    ) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+        const excelEpoch = new Date(
+            Date.UTC(1899, 11, 30)
+        );
 
-        const excelEpoch =
-            new Date(
-                Date.UTC(
-                    1899,
-                    11,
-                    30
-                )
-            );
+        const date = new Date(
+            excelEpoch.getTime() +
+            value * 86400000
+        );
 
-        const date =
-            new Date(
-                excelEpoch.getTime() +
-                value *
-                86400000
-            );
-
-        return Number.isNaN(
-            date.getTime()
-        )
+        return Number.isNaN(date.getTime())
             ? null
             : date;
     }
 
-    const raw =
-        String(value).trim();
+    const raw = String(value).trim();
 
-    const nativeDate =
-        new Date(raw);
+    const nativeDate = new Date(raw);
 
-    if (
-        !Number.isNaN(
-            nativeDate.getTime()
-        )
-    ) {
+    if (!Number.isNaN(nativeDate.getTime())) {
         return nativeDate;
     }
 
     const formats = [
-
         "%m/%d/%Y %I:%M:%S %p",
-
         "%m/%d/%Y %I:%M %p",
-
         "%m/%d/%Y %H:%M:%S",
-
         "%m/%d/%Y %H:%M"
     ];
 
-    for (
-        const format of formats
-    ) {
-
-        const date =
-            d3.timeParse(
-                format
-            )(raw);
-
-        if (date) {
-            return date;
-        }
+    for (const format of formats) {
+        const date = d3.timeParse(format)(raw);
+        if (date) return date;
     }
 
     return null;
@@ -583,10 +364,8 @@ function parseInvoiceDate(value) {
    ========================================================= */
 
 function showLoadError(error) {
-
     const message =
-        error &&
-        error.message
+        error && error.message
             ? error.message
             : String(error);
 
@@ -595,39 +374,18 @@ function showLoadError(error) {
         "#donutChart",
         "#columnChart",
         "#scatterChart"
-
     ].forEach(selector => {
-
-        const box =
-            d3.select(selector);
-
-        if (box.empty()) {
-            return;
-        }
+        const box = d3.select(selector);
+        if (box.empty()) return;
 
         box.html("");
 
         box.append("div")
-            .style(
-                "padding",
-                "30px"
-            )
-            .style(
-                "text-align",
-                "center"
-            )
-            .style(
-                "color",
-                "#dc2626"
-            )
-            .style(
-                "font-weight",
-                "600"
-            )
-            .text(
-                "โหลดข้อมูลไม่สำเร็จ: " +
-                message
-            );
+            .style("padding", "30px")
+            .style("text-align", "center")
+            .style("color", "#dc2626")
+            .style("font-weight", "600")
+            .text("โหลดข้อมูลไม่สำเร็จ: " + message);
     });
 }
 
@@ -636,136 +394,77 @@ function showLoadError(error) {
    ========================================================= */
 
 function populateCountryDropdown() {
+    const select = d3.select("#countryFilter");
 
-    const select =
-        d3.select(
-            "#countryFilter"
-        );
-
-    select
-        .selectAll(
-            "option:not(:first-child)"
-        )
-        .remove();
+    select.selectAll("option:not(:first-child)").remove();
 
     Array.from(
-        new Set(
-            globalDataset.map(
-                d => d.Country
-            )
-        )
+        new Set(globalDataset.map(d => d.Country))
     )
         .filter(Boolean)
         .sort()
         .forEach(country => {
-
             select.append("option")
-                .attr(
-                    "value",
-                    country
-                )
+                .attr("value", country)
                 .text(country);
         });
 }
 
 function populateYearDropdown() {
+    const select = d3.select("#yearFilter");
 
-    const select =
-        d3.select(
-            "#yearFilter"
-        );
-
-    select
-        .selectAll(
-            "option:not(:first-child)"
-        )
-        .remove();
+    select.selectAll("option:not(:first-child)").remove();
 
     Array.from(
         new Set(
             globalDataset
-                .map(
-                    d => d.Year
-                )
+                .map(d => d.Year)
                 .filter(Boolean)
         )
     )
-        .sort(
-            (a, b) => a - b
-        )
+        .sort((a, b) => a - b)
         .forEach(year => {
-
             select.append("option")
-                .attr(
-                    "value",
-                    year
-                )
+                .attr("value", year)
                 .text(year);
         });
 }
 
 function populateMonthDropdown() {
+    const select = d3.select("#monthFilter");
 
-    const select =
-        d3.select(
-            "#monthFilter"
-        );
+    select.selectAll("option:not(:first-child)").remove();
 
-    select
-        .selectAll(
-            "option:not(:first-child)"
+    const months = Array.from(
+        new Set(
+            globalDataset
+                .filter(d =>
+                    selectedYear === "ALL" ||
+                    String(d.Year) === String(selectedYear)
+                )
+                .map(d => d.Month)
+                .filter(Boolean)
         )
-        .remove();
-
-    const months =
-        Array.from(
-            new Set(
-                globalDataset
-                    .filter(d =>
-                        selectedYear === "ALL" ||
-                        String(d.Year) ===
-                        String(selectedYear)
-                    )
-                    .map(
-                        d => d.Month
-                    )
-                    .filter(Boolean)
-            )
-        )
-        .sort(
-            (a, b) => a - b
-        );
+    ).sort((a, b) => a - b);
 
     months.forEach(month => {
-
         select.append("option")
-            .attr(
-                "value",
-                month
-            )
+            .attr("value", month)
             .text(
-                String(month)
-                    .padStart(2, "0") +
+                String(month).padStart(2, "0") +
                 " - " +
-                MONTH_NAMES_TH[
-                    month - 1
-                ]
+                MONTH_NAMES_TH[month - 1]
             );
     });
 
     if (
         selectedMonth !== "ALL" &&
-        !months.includes(
-            Number(selectedMonth)
-        )
+        !months.includes(Number(selectedMonth))
     ) {
         selectedMonth = "ALL";
     }
 
-    select.property(
-        "value",
-        selectedMonth
-    );
+    select.property("value", selectedMonth);
 }
 
 /* =========================================================
@@ -773,138 +472,59 @@ function populateMonthDropdown() {
    ========================================================= */
 
 function applyFilters() {
+    filteredData = globalDataset.filter(d => {
+        const matchCountry =
+            selectedCountry === "ALL" ||
+            d.Country === selectedCountry;
 
-    filteredData =
-        globalDataset.filter(d => {
+        const matchType =
+            selectedType === "ALL" ||
+            d.TransactionType === selectedType;
 
-            const matchCountry =
-                selectedCountry === "ALL" ||
-                d.Country ===
-                selectedCountry;
+        const matchYear =
+            selectedYear === "ALL" ||
+            String(d.Year) === String(selectedYear);
 
-            const matchType =
-                selectedType === "ALL" ||
-                d.TransactionType ===
-                selectedType;
+        const matchMonth =
+            selectedMonth === "ALL" ||
+            String(d.Month) === String(selectedMonth);
 
-            const matchYear =
-                selectedYear === "ALL" ||
-                String(d.Year) ===
-                String(selectedYear);
-
-            const matchMonth =
-                selectedMonth === "ALL" ||
-                String(d.Month) ===
-                String(selectedMonth);
-
-            return (
-                matchCountry &&
-                matchType &&
-                matchYear &&
-                matchMonth
-            );
-        });
+        return (
+            matchCountry &&
+            matchType &&
+            matchYear &&
+            matchMonth
+        );
+    });
 
     updateDashboard();
 }
 
 function resetDashboard() {
-
     selectedCountry = "ALL";
-
     selectedType = "ALL";
-
     selectedYear = "ALL";
-
     selectedMonth = "ALL";
 
     localProductMetric = "value";
-
     localProductTop = 10;
-
     localDonutTop = 5;
-
     localScatterPrice = "all";
-
     localScatterQty = 0;
 
-    d3.select(
-        "#countryFilter"
-    )
-        .property(
-            "value",
-            "ALL"
-        );
-
-    d3.select(
-        "#typeFilter"
-    )
-        .property(
-            "value",
-            "ALL"
-        );
-
-    d3.select(
-        "#yearFilter"
-    )
-        .property(
-            "value",
-            "ALL"
-        );
-
-    d3.select(
-        "#localProductMetric"
-    )
-        .property(
-            "value",
-            "value"
-        );
-
-    d3.select(
-        "#localProductTop"
-    )
-        .property(
-            "value",
-            "10"
-        );
-
-    d3.select(
-        "#localDonutTop"
-    )
-        .property(
-            "value",
-            "5"
-        );
-
-    d3.select(
-        "#localScatterPrice"
-    )
-        .property(
-            "value",
-            "all"
-        );
-
-    d3.select(
-        "#localScatterQty"
-    )
-        .property(
-            "value",
-            "0"
-        );
+    d3.select("#countryFilter").property("value", "ALL");
+    d3.select("#typeFilter").property("value", "ALL");
+    d3.select("#yearFilter").property("value", "ALL");
+    d3.select("#localProductMetric").property("value", "value");
+    d3.select("#localProductTop").property("value", "10");
+    d3.select("#localDonutTop").property("value", "5");
+    d3.select("#localScatterPrice").property("value", "all");
+    d3.select("#localScatterQty").property("value", "0");
 
     populateMonthDropdown();
+    d3.select("#monthFilter").property("value", "ALL");
 
-    d3.select(
-        "#monthFilter"
-    )
-        .property(
-            "value",
-            "ALL"
-        );
-
-    filteredData =
-        [...globalDataset];
-
+    filteredData = [...globalDataset];
     updateDashboard();
 }
 
@@ -913,85 +533,44 @@ function resetDashboard() {
    ========================================================= */
 
 function updateDashboard() {
-
     renderKPIs();
-
     renderCharts();
 }
 
 function renderKPIs() {
+    const totalSales = d3.sum(
+        filteredData,
+        d => Number(d.LineAmount) || 0
+    );
 
-    const totalSales =
-        d3.sum(
-            filteredData,
-            d =>
-                Number(
-                    d.LineAmount
-                ) || 0
-        );
+    const totalQty = d3.sum(
+        filteredData,
+        d => Number(d.Quantity) || 0
+    );
 
-    const totalQty =
-        d3.sum(
-            filteredData,
-            d =>
-                Number(
-                    d.Quantity
-                ) || 0
-        );
+    const totalOrders = filteredData.length;
 
-    const totalOrders =
-        filteredData.length;
+    const totalCountries = new Set(
+        filteredData.map(d => d.Country)
+    ).size;
 
-    const totalCountries =
-        new Set(
-            filteredData.map(
-                d => d.Country
-            )
-        ).size;
+    d3.select("#kpiTotalSales")
+        .text(`£${d3.format(",.2f")(totalSales)}`);
 
-    d3.select(
-        "#kpiTotalSales"
-    )
-        .text(
-            `£${d3.format(",.2f")(
-                totalSales
-            )}`
-        );
+    d3.select("#kpiTotalQty")
+        .text(`${d3.format(",")(totalQty)} ชิ้น`);
 
-    d3.select(
-        "#kpiTotalQty"
-    )
-        .text(
-            `${d3.format(",")(
-                totalQty
-            )} ชิ้น`
-        );
+    d3.select("#kpiTotalOrders")
+        .text(`${d3.format(",")(totalOrders)} รายการ`);
 
-    d3.select(
-        "#kpiTotalOrders"
-    )
-        .text(
-            `${d3.format(",")(
-                totalOrders
-            )} รายการ`
-        );
-
-    d3.select(
-        "#kpiTotalCountries"
-    )
-        .text(
-            `${totalCountries} ประเทศ`
-        );
+    d3.select("#kpiTotalCountries")
+        .text(`${totalCountries} ประเทศ`);
 }
 
 function renderCharts() {
-
     renderBarChart();
-
     renderDonutChart();
-
     renderColumnChart();
-
     renderScatterChart();
 }
 
@@ -999,74 +578,35 @@ function renderCharts() {
    TOOLTIP
    ========================================================= */
 
-const tooltip =
-    d3.select("#tooltip");
+const tooltip = d3.select("#tooltip");
 
-function showTooltip(
-    event,
-    content
-) {
+function showTooltip(event, content) {
+    if (tooltip.empty()) return;
 
-    if (tooltip.empty()) {
-        return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let left = event.pageX + 15;
+    let top = event.pageY - 28;
+
+    if (left > window.scrollX + viewportWidth - 300) {
+        left = event.pageX - 295;
     }
 
-    const viewportWidth =
-        window.innerWidth;
-
-    const viewportHeight =
-        window.innerHeight;
-
-    let left =
-        event.pageX + 15;
-
-    let top =
-        event.pageY - 28;
-
-    if (
-        left >
-        window.scrollX +
-        viewportWidth -
-        300
-    ) {
-        left =
-            event.pageX - 295;
-    }
-
-    if (
-        top >
-        window.scrollY +
-        viewportHeight -
-        150
-    ) {
-        top =
-            event.pageY - 150;
+    if (top > window.scrollY + viewportHeight - 150) {
+        top = event.pageY - 150;
     }
 
     tooltip
         .html(content)
-        .style(
-            "opacity",
-            1
-        )
-        .style(
-            "left",
-            left + "px"
-        )
-        .style(
-            "top",
-            top + "px"
-        );
+        .style("opacity", 1)
+        .style("left", left + "px")
+        .style("top", top + "px");
 }
 
 function hideTooltip() {
-
     if (!tooltip.empty()) {
-
-        tooltip.style(
-            "opacity",
-            0
-        );
+        tooltip.style("opacity", 0);
     }
 }
 
@@ -1075,23 +615,13 @@ function hideTooltip() {
    ========================================================= */
 
 function renderBarChart() {
-
-    const container =
-        d3.select(
-            "#barChart"
-        );
-
-    if (container.empty()) {
-        return;
-    }
+    const container = d3.select("#barChart");
+    if (container.empty()) return;
 
     container.html("");
 
-    const node =
-        container.node();
-
-    const bounds =
-        node.getBoundingClientRect();
+    const node = container.node();
+    const bounds = node.getBoundingClientRect();
 
     const margin = {
         top: 20,
@@ -1100,264 +630,131 @@ function renderBarChart() {
         left: 205
     };
 
-    const width =
-        Math.max(
-            200,
-            bounds.width -
-            margin.left -
-            margin.right
-        );
+    const width = Math.max(
+        200,
+        bounds.width - margin.left - margin.right
+    );
 
-    const height =
-        Math.max(
-            180,
-            bounds.height -
-            margin.top -
-            margin.bottom
-        );
+    const height = Math.max(
+        180,
+        bounds.height - margin.top - margin.bottom
+    );
 
-    const productData =
-        Array.from(
-            d3.rollup(
-                filteredData,
-
-                values => ({
-
-                    Sales:
-                        d3.sum(
-                            values,
-                            d =>
-                                Number(
-                                    d.LineAmount
-                                ) || 0
-                        ),
-
-                    Qty:
-                        d3.sum(
-                            values,
-                            d =>
-                                Number(
-                                    d.Quantity
-                                ) || 0
-                        )
-                }),
-
-                d => d.Description
-            ),
-
-            ([description, stats]) => ({
-
-                FullDesc:
-                    description,
-
-                ShortDesc:
-                    description.length > 25
-                        ? description.substring(
-                            0,
-                            22
-                        ) + "..."
-                        : description,
-
-                Sales:
-                    stats.Sales,
-
-                Qty:
-                    stats.Qty
-            })
-        )
-        .sort(
-            (a, b) =>
-                localProductMetric === "qty"
-                    ? b.Qty - a.Qty
-                    : b.Sales - a.Sales
-        )
-        .slice(
-            0,
-            localProductTop
-        );
+    const productData = Array.from(
+        d3.rollup(
+            filteredData,
+            values => ({
+                Sales: d3.sum(
+                    values,
+                    d => Number(d.LineAmount) || 0
+                ),
+                Qty: d3.sum(
+                    values,
+                    d => Number(d.Quantity) || 0
+                )
+            }),
+            d => d.Description
+        ),
+        ([description, stats]) => ({
+            FullDesc: description,
+            ShortDesc:
+                description.length > 25
+                    ? description.substring(0, 22) + "..."
+                    : description,
+            Sales: stats.Sales,
+            Qty: stats.Qty
+        })
+    )
+    .sort((a, b) =>
+        localProductMetric === "qty"
+            ? b.Qty - a.Qty
+            : b.Sales - a.Sales
+    )
+    .slice(0, localProductTop);
 
     if (!productData.length) {
-
         container.append("div")
-            .style(
-                "padding",
-                "80px"
-            )
-            .style(
-                "text-align",
-                "center"
-            )
-            .text(
-                "ไม่มีข้อมูล"
-            );
-
+            .style("padding", "80px")
+            .style("text-align", "center")
+            .text("ไม่มีข้อมูล");
         return;
     }
 
-    const svg =
-        container.append("svg")
-            .attr(
-                "width",
-                "100%"
-            )
-            .attr(
-                "height",
-                "100%"
-            )
-            .attr(
-                "viewBox",
-                `0 0 ${bounds.width} ${bounds.height}`
-            )
-            .style(
-                "overflow",
-                "visible"
-            );
+    const svg = container.append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr("viewBox", `0 0 ${bounds.width} ${bounds.height}`)
+        .style("overflow", "visible");
 
-    const g =
-        svg.append("g")
-            .attr(
-                "transform",
-                `translate(
-                    ${margin.left},
-                    ${margin.top}
-                )`
-            );
-
-    const y =
-        d3.scaleBand()
-            .domain(
-                productData.map(
-                    d => d.ShortDesc
-                )
-            )
-            .range(
-                [0, height]
-            )
-            .padding(
-                0.22
-            );
-
-    const metricMax =
-        d3.max(
-            productData,
-            d =>
-                localProductMetric === "qty"
-                    ? d.Qty
-                    : d.Sales
-        ) || 1;
-
-    const x =
-        d3.scaleLinear()
-            .domain(
-                [
-                    0,
-                    metricMax * 1.1
-                ]
-            )
-            .nice()
-            .range(
-                [0, width]
-            );
-
-    g.append("g")
-        .call(
-            d3.axisLeft(y)
-        );
-
-    g.append("g")
+    const g = svg.append("g")
         .attr(
             "transform",
-            `translate(
-                0,
-                ${height}
-            )`
-        )
+            `translate(${margin.left},${margin.top})`
+        );
+
+    const y = d3.scaleBand()
+        .domain(productData.map(d => d.ShortDesc))
+        .range([0, height])
+        .padding(0.22);
+
+    const metricMax = d3.max(
+        productData,
+        d =>
+            localProductMetric === "qty"
+                ? d.Qty
+                : d.Sales
+    ) || 1;
+
+    const x = d3.scaleLinear()
+        .domain([0, metricMax * 1.1])
+        .nice()
+        .range([0, width]);
+
+    g.append("g")
+        .call(d3.axisLeft(y));
+
+    g.append("g")
+        .attr("transform", `translate(0,${height})`)
         .call(
             d3.axisBottom(x)
                 .ticks(5)
-                .tickFormat(
-                    d =>
-                        localProductMetric === "qty"
-                            ? d3.format(",")(d)
-                            : "£" +
-                              d3.format(".0f")(
-                                  d / 1000
-                              ) +
-                              "k"
+                .tickFormat(d =>
+                    localProductMetric === "qty"
+                        ? d3.format(",")(d)
+                        : "£" +
+                          d3.format(".0f")(d / 1000) +
+                          "k"
                 )
         );
 
-    addAxisLabel(
-        g,
-        {
-            x:
-                width / 2,
+    addAxisLabel(g, {
+        x: width / 2,
+        y: height + 48,
+        text:
+            localProductMetric === "qty"
+                ? "จำนวนชิ้น"
+                : "มูลค่ารายการ (£)"
+    });
 
-            y:
-                height + 48,
+    addAxisLabel(g, {
+        x: -height / 2,
+        y: -margin.left + 18,
+        text: "รายชื่อสินค้า",
+        rotate: -90
+    });
 
-            text:
-                localProductMetric === "qty"
-                    ? "จำนวนชิ้น"
-                    : "มูลค่ารายการ (£)"
-        }
-    );
-
-    addAxisLabel(
-        g,
-        {
-            x:
-                -height / 2,
-
-            y:
-                -margin.left + 18,
-
-            text:
-                "รายชื่อสินค้า",
-
-            rotate:
-                -90
-        }
-    );
-
-    g.selectAll(
-        ".bar-rect"
-    )
-        .data(
-            productData
-        )
+    g.selectAll(".bar-rect")
+        .data(productData)
         .enter()
         .append("rect")
-        .attr(
-            "class",
-            "bar-rect"
-        )
-        .attr(
-            "x",
-            0
-        )
-        .attr(
-            "y",
-            d =>
-                y(
-                    d.ShortDesc
-                )
-        )
-        .attr(
-            "height",
-            y.bandwidth()
-        )
-        .attr(
-            "rx",
-            5
-        )
+        .attr("class", "bar-rect")
+        .attr("x", 0)
+        .attr("y", d => y(d.ShortDesc))
+        .attr("height", y.bandwidth())
+        .attr("rx", 5)
         .attr(
             "fill",
-            (d, i) =>
-                BAR_COLORS[
-                    i %
-                    BAR_COLORS.length
-                ]
+            (d, i) => BAR_COLORS[i % BAR_COLORS.length]
         )
         .attr(
             "width",
@@ -1368,29 +765,15 @@ function renderBarChart() {
                         : d.Sales
                 )
         )
-        .on(
-            "mouseover",
-            (event, d) => {
-
-                showTooltip(
-                    event,
-
-                    `<b>${safeText(
-                        d.FullDesc
-                    )}</b>
-                    <br>ยอดขาย: £${d3.format(",.2f")(
-                        d.Sales
-                    )}
-                    <br>จำนวน: ${d3.format(",")(
-                        d.Qty
-                    )} ชิ้น`
-                );
-            }
-        )
-        .on(
-            "mouseout",
-            hideTooltip
-        );
+        .on("mouseover", (event, d) => {
+            showTooltip(
+                event,
+                `<b>${safeText(d.FullDesc)}</b>
+                 <br>ยอดขาย: £${d3.format(",.2f")(d.Sales)}
+                 <br>จำนวน: ${d3.format(",")(d.Qty)} ชิ้น`
+            );
+        })
+        .on("mouseout", hideTooltip);
 }
 
 /* =========================================================
@@ -1398,593 +781,267 @@ function renderBarChart() {
    ========================================================= */
 
 function renderDonutChart() {
-
-    const container =
-        d3.select(
-            "#donutChart"
-        );
-
-    if (container.empty()) {
-        return;
-    }
+    const container = d3.select("#donutChart");
+    if (container.empty()) return;
 
     container.html("");
 
-    const node =
-        container.node();
+    const node = container.node();
+    const bounds = node.getBoundingClientRect();
 
-    const bounds =
-        node.getBoundingClientRect();
-
-    const fullWidth =
-        Math.max(
-            360,
-            bounds.width || 600
-        );
-
-    const height =
-        Math.max(
-            350,
-            bounds.height || 350
-        );
+    const fullWidth = Math.max(360, bounds.width || 600);
+    const height = Math.max(350, bounds.height || 350);
 
     const donutWidth =
         fullWidth <= 600
-            ? Math.floor(
-                fullWidth * 0.56
-            )
-            : Math.floor(
-                fullWidth * 0.58
-            );
+            ? Math.floor(fullWidth * 0.56)
+            : Math.floor(fullWidth * 0.58);
 
-    const legendWidth =
-        fullWidth -
-        donutWidth -
-        10;
+    const legendWidth = fullWidth - donutWidth - 10;
 
-    const countryRollup =
-        Array.from(
-
-            d3.rollup(
-                filteredData,
-
-                values => ({
-
-                    Value:
-                        d3.sum(
-                            values,
-                            d =>
-                                Number(
-                                    d.LineAmount
-                                ) || 0
-                        ),
-
-                    Count:
-                        values.length
-                }),
-
-                d => d.Country
-            ),
-
-            ([Country, stats]) => ({
-
-                Country,
-
-                Value:
-                    stats.Value,
-
-                Count:
-                    stats.Count
-            })
-        )
-        .filter(
-            d => d.Value > 0
-        )
-        .sort(
-            (a, b) =>
-                b.Value -
-                a.Value
-        );
+    const countryRollup = Array.from(
+        d3.rollup(
+            filteredData,
+            values => ({
+                Value: d3.sum(
+                    values,
+                    d => Number(d.LineAmount) || 0
+                ),
+                Count: values.length
+            }),
+            d => d.Country
+        ),
+        ([Country, stats]) => ({
+            Country,
+            Value: stats.Value,
+            Count: stats.Count
+        })
+    )
+    .filter(d => d.Value > 0)
+    .sort((a, b) => b.Value - a.Value);
 
     if (!countryRollup.length) {
-
         container.append("div")
-            .style(
-                "padding",
-                "80px"
-            )
-            .style(
-                "text-align",
-                "center"
-            )
-            .text(
-                "ไม่มีข้อมูล"
-            );
-
+            .style("padding", "80px")
+            .style("text-align", "center")
+            .text("ไม่มีข้อมูล");
         return;
     }
 
     let countryData;
 
-    if (
-        localDonutTop === 999
-    ) {
-
-        countryData =
-            countryRollup;
-
+    if (localDonutTop === 999) {
+        countryData = countryRollup;
     } else {
+        const top = countryRollup.slice(0, localDonutTop);
+        const others = countryRollup.slice(localDonutTop);
 
-        const top =
-            countryRollup.slice(
-                0,
-                localDonutTop
-            );
-
-        const others =
-            countryRollup.slice(
-                localDonutTop
-            );
-
-        countryData =
-            [...top];
+        countryData = [...top];
 
         if (others.length) {
-
             countryData.push({
-
-                Country:
-                    "Others",
-
-                Value:
-                    d3.sum(
-                        others,
-                        d => d.Value
-                    ),
-
-                Count:
-                    d3.sum(
-                        others,
-                        d => d.Count
-                    )
+                Country: "Others",
+                Value: d3.sum(others, d => d.Value),
+                Count: d3.sum(others, d => d.Count)
             });
         }
     }
 
-    const totalValue =
-        d3.sum(
-            countryData,
-            d =>
-                Math.max(
-                    0,
-                    d.Value
-                )
+    const totalValue = d3.sum(
+        countryData,
+        d => Math.max(0, d.Value)
+    );
+
+    const svg = container.append("svg")
+        .attr("width", donutWidth)
+        .attr("height", height)
+        .attr("viewBox", `0 0 ${donutWidth} ${height}`)
+        .style("flex", `0 0 ${donutWidth}px`)
+        .style("width", `${donutWidth}px`)
+        .style("height", `${height}px`)
+        .style("overflow", "visible");
+
+    const radius = Math.max(
+        70,
+        Math.min(
+            donutWidth * 0.43,
+            height * 0.40
+        )
+    );
+
+    const centerX = donutWidth / 2;
+    const centerY = height / 2;
+
+    const g = svg.append("g")
+        .attr(
+            "transform",
+            `translate(${centerX},${centerY})`
         );
 
-    const svg =
-        container.append("svg")
-            .attr(
-                "width",
-                donutWidth
-            )
-            .attr(
-                "height",
-                height
-            )
-            .attr(
-                "viewBox",
-                `0 0 ${donutWidth} ${height}`
-            )
-            .style(
-                "flex",
-                `0 0 ${donutWidth}px`
-            )
-            .style(
-                "width",
-                `${donutWidth}px`
-            )
-            .style(
-                "height",
-                `${height}px`
-            )
-            .style(
-                "overflow",
-                "visible"
-            );
+    const pie = d3.pie()
+        .sort(null)
+        .value(d => Math.max(0, d.Value));
 
-    const radius =
-        Math.max(
-            70,
+    const arc = d3.arc()
+        .innerRadius(radius * 0.55)
+        .outerRadius(radius);
 
-            Math.min(
-                donutWidth * 0.43,
-                height * 0.40
-            )
-        );
+    const hoverArc = d3.arc()
+        .innerRadius(radius * 0.52)
+        .outerRadius(radius * 1.05);
 
-    const centerX =
-        donutWidth / 2;
+    const pieData = pie(countryData);
 
-    const centerY =
-        height / 2;
-
-    const g =
-        svg.append("g")
-            .attr(
-                "transform",
-                `translate(
-                    ${centerX},
-                    ${centerY}
-                )`
-            );
-
-    const pie =
-        d3.pie()
-            .sort(null)
-            .value(
-                d =>
-                    Math.max(
-                        0,
-                        d.Value
-                    )
-            );
-
-    const arc =
-        d3.arc()
-            .innerRadius(
-                radius * 0.55
-            )
-            .outerRadius(
-                radius
-            );
-
-    const hoverArc =
-        d3.arc()
-            .innerRadius(
-                radius * 0.52
-            )
-            .outerRadius(
-                radius * 1.05
-            );
-
-    const pieData =
-        pie(countryData);
-
-    const paths =
-        g.selectAll(
-            ".country-slice"
-        )
-        .data(
-            pieData
-        )
+    const paths = g.selectAll(".country-slice")
+        .data(pieData)
         .enter()
         .append("path")
-        .attr(
-            "class",
-            "country-slice"
+        .attr("class", "country-slice")
+        .attr("fill", d =>
+            d.data.Country === "Others"
+                ? "#CBD5E1"
+                : getCountryColor(d.data.Country)
         )
-        .attr(
-            "fill",
-            d =>
-                d.data.Country ===
-                "Others"
+        .attr("stroke", "#ffffff")
+        .attr("stroke-width", 2)
+        .attr("d", arc)
+        .style("cursor", d =>
+            d.data.Country === "Others"
+                ? "default"
+                : "pointer"
+        )
+        .on("mouseover", function (event, d) {
+            d3.select(this)
+                .transition()
+                .duration(120)
+                .attr("d", hoverArc);
 
-                    ? "#CBD5E1"
+            const percent =
+                totalValue > 0
+                    ? (d.data.Value / totalValue) * 100
+                    : 0;
 
-                    : getCountryColor(
-                        d.data.Country
-                    )
-        )
-        .attr(
-            "stroke",
-            "#ffffff"
-        )
-        .attr(
-            "stroke-width",
-            2
-        )
-        .attr(
-            "d",
-            arc
-        )
-        .style(
-            "cursor",
-            d =>
-                d.data.Country ===
-                "Others"
-                    ? "default"
-                    : "pointer"
-        )
-        .on(
-            "mouseover",
-            function (
+            showTooltip(
                 event,
-                d
-            ) {
+                `<b>${safeText(d.data.Country)}</b>
+                 <br>จำนวนรายการ: ${d3.format(",")(d.data.Count)}
+                 <br>มูลค่า: £${d3.format(",.2f")(d.data.Value)}
+                 <br>สัดส่วน: ${percent.toFixed(1)}%`
+            );
+        })
+        .on("mouseout", function (event, d) {
+            d3.select(this)
+                .transition()
+                .duration(120)
+                .attr("d", arc);
 
-                d3.select(this)
-                    .transition()
-                    .duration(120)
-                    .attr(
-                        "d",
-                        hoverArc
-                    );
+            hideTooltip();
+        })
+        .on("click", function (event, d) {
+            if (d.data.Country !== "Others") {
+                selectedCountry = d.data.Country;
 
-                const percent =
-                    totalValue > 0
-                        ? (
-                            d.data.Value /
-                            totalValue
-                        ) * 100
-                        : 0;
+                d3.select("#countryFilter")
+                    .property("value", selectedCountry);
 
-                showTooltip(
-                    event,
-
-                    `<b>${safeText(
-                        d.data.Country
-                    )}</b>
-                    <br>จำนวนรายการ: ${d3.format(",")(
-                        d.data.Count
-                    )}
-                    <br>มูลค่า: £${d3.format(",.2f")(
-                        d.data.Value
-                    )}
-                    <br>สัดส่วน: ${percent.toFixed(
-                        1
-                    )}%`
-                );
+                applyFilters();
             }
-        )
-        .on(
-            "mouseout",
-            function () {
-
-                d3.select(this)
-                    .transition()
-                    .duration(120)
-                    .attr(
-                        "d",
-                        arc
-                    );
-
-                hideTooltip();
-            }
-        )
-        .on(
-            "click",
-            function (
-                event,
-                d
-            ) {
-
-                if (
-                    d.data.Country !==
-                    "Others"
-                ) {
-
-                    selectedCountry =
-                        d.data.Country;
-
-                    d3.select(
-                        "#countryFilter"
-                    )
-                        .property(
-                            "value",
-                            selectedCountry
-                        );
-
-                    applyFilters();
-                }
-            }
-        );
+        });
 
     g.append("text")
-        .attr(
-            "text-anchor",
-            "middle"
-        )
-        .attr(
-            "dy",
-            "-0.15em"
-        )
-        .style(
-            "font-size",
-            "15px"
-        )
-        .style(
-            "font-weight",
-            "500"
-        )
-        .style(
-            "fill",
-            "#64748b"
-        )
-        .text(
-            "ยอดขาย"
-        );
+        .attr("text-anchor", "middle")
+        .attr("dy", "-0.15em")
+        .style("font-size", "15px")
+        .style("font-weight", "500")
+        .style("fill", "#64748b")
+        .text("ยอดขาย");
 
     g.append("text")
-        .attr(
-            "text-anchor",
-            "middle"
-        )
-        .attr(
-            "dy",
-            "1.15em"
-        )
-        .style(
-            "font-size",
-            "17px"
-        )
-        .style(
-            "font-weight",
-            "700"
-        )
-        .style(
-            "fill",
-            "#40364b"
-        )
-        .text(
-            `£${d3.format(",.0f")(
-                totalValue
-            )}`
-        );
+        .attr("text-anchor", "middle")
+        .attr("dy", "1.15em")
+        .style("font-size", "17px")
+        .style("font-weight", "700")
+        .style("fill", "#40364b")
+        .text(`£${d3.format(",.0f")(totalValue)}`);
 
     /* =====================================================
-       LEGEND - FULL NAME
+       LEGEND - FULL NAME + SCROLL
        ===================================================== */
 
-    const legend =
-        container.append("div")
-            .attr(
-                "class",
-                "country-legend-panel"
-            )
-            .style(
-                "width",
-                `${Math.max(
-                    legendWidth,
-                    120
-                )}px`
-            )
-            .style(
-                "flex",
-                "1 1 auto"
-            );
+    const legend = container.append("div")
+        .attr("class", "country-legend-panel")
+        .style("width", `${Math.max(legendWidth, 120)}px`)
+        .style("flex", "1 1 auto");
 
     countryData.forEach(d => {
-
-        const item =
-            legend.append("div")
-                .attr(
-                    "class",
-                    "country-legend-item"
-                )
-                .attr(
-                    "title",
-                    d.Country
-                )
-                .style(
-                    "cursor",
-                    d.Country === "Others"
-                        ? "default"
-                        : "pointer"
-                );
+        const item = legend.append("div")
+            .attr("class", "country-legend-item")
+            .attr("title", d.Country)
+            .style(
+                "cursor",
+                d.Country === "Others"
+                    ? "default"
+                    : "pointer"
+            );
 
         item.append("span")
-            .attr(
-                "class",
-                "country-legend-dot"
-            )
+            .attr("class", "country-legend-dot")
             .style(
                 "background",
-                d.Country ===
-                "Others"
+                d.Country === "Others"
                     ? "#CBD5E1"
-                    : getCountryColor(
-                        d.Country
-                    )
+                    : getCountryColor(d.Country)
             );
 
         item.append("span")
-            .attr(
-                "class",
-                "country-legend-name"
-            )
-            .text(
-                d.Country
+            .attr("class", "country-legend-name")
+            .text(d.Country);
+
+        item.on("mouseenter", function (event) {
+            paths
+                .filter(p =>
+                    p.data.Country === d.Country
+                )
+                .transition()
+                .duration(120)
+                .attr("d", hoverArc);
+
+            const percent =
+                totalValue > 0
+                    ? (d.Value / totalValue) * 100
+                    : 0;
+
+            showTooltip(
+                event,
+                `<b>${safeText(d.Country)}</b>
+                 <br>จำนวนรายการ: ${d3.format(",")(d.Count)}
+                 <br>มูลค่า: £${d3.format(",.2f")(d.Value)}
+                 <br>สัดส่วน: ${percent.toFixed(1)}%`
             );
+        });
 
-        item.on(
-            "mouseenter",
-            function (event) {
+        item.on("mouseleave", function () {
+            paths
+                .filter(p =>
+                    p.data.Country === d.Country
+                )
+                .transition()
+                .duration(120)
+                .attr("d", arc);
 
-                paths
-                    .filter(
-                        p =>
-                            p.data.Country ===
-                            d.Country
-                    )
-                    .transition()
-                    .duration(120)
-                    .attr(
-                        "d",
-                        hoverArc
-                    );
+            hideTooltip();
+        });
 
-                const percent =
-                    totalValue > 0
-                        ? (
-                            d.Value /
-                            totalValue
-                        ) * 100
-                        : 0;
+        item.on("click", function () {
+            if (d.Country !== "Others") {
+                selectedCountry = d.Country;
 
-                showTooltip(
-                    event,
+                d3.select("#countryFilter")
+                    .property("value", selectedCountry);
 
-                    `<b>${safeText(
-                        d.Country
-                    )}</b>
-                    <br>จำนวนรายการ: ${d3.format(",")(
-                        d.Count
-                    )}
-                    <br>มูลค่า: £${d3.format(",.2f")(
-                        d.Value
-                    )}
-                    <br>สัดส่วน: ${percent.toFixed(
-                        1
-                    )}%`
-                );
+                applyFilters();
             }
-        );
-
-        item.on(
-            "mouseleave",
-            function () {
-
-                paths
-                    .filter(
-                        p =>
-                            p.data.Country ===
-                            d.Country
-                    )
-                    .transition()
-                    .duration(120)
-                    .attr(
-                        "d",
-                        arc
-                    );
-
-                hideTooltip();
-            }
-        );
-
-        item.on(
-            "click",
-            function () {
-
-                if (
-                    d.Country !==
-                    "Others"
-                ) {
-
-                    selectedCountry =
-                        d.Country;
-
-                    d3.select(
-                        "#countryFilter"
-                    )
-                        .property(
-                            "value",
-                            selectedCountry
-                        );
-
-                    applyFilters();
-                }
-            }
-        );
+        });
     });
 }
 
@@ -1993,207 +1050,106 @@ function renderDonutChart() {
    ========================================================= */
 
 function renderColumnChart() {
-
-    const container =
-        d3.select(
-            "#columnChart"
-        );
-
-    if (container.empty()) {
-        return;
-    }
+    const container = d3.select("#columnChart");
+    if (container.empty()) return;
 
     container.html("");
 
-    const node =
-        container.node();
-
-    const bounds =
-        node.getBoundingClientRect();
+    const node = container.node();
+    const bounds = node.getBoundingClientRect();
 
     const margin = {
-
         top: 25,
-
         right: 25,
-
         bottom: 70,
-
         left: 80
     };
 
-    const width =
-        Math.max(
-            200,
+    const width = Math.max(
+        200,
+        bounds.width - margin.left - margin.right
+    );
 
-            bounds.width -
-            margin.left -
-            margin.right
-        );
+    const height = Math.max(
+        180,
+        bounds.height - margin.top - margin.bottom
+    );
 
-    const height =
-        Math.max(
-            180,
+    const dataset = globalDataset.filter(d => {
+        const countryOK =
+            selectedCountry === "ALL" ||
+            d.Country === selectedCountry;
 
-            bounds.height -
-            margin.top -
-            margin.bottom
-        );
+        const yearOK =
+            selectedYear === "ALL" ||
+            String(d.Year) === String(selectedYear);
 
-    const dataset =
-        globalDataset.filter(d => {
+        const monthOK =
+            selectedMonth === "ALL" ||
+            String(d.Month) === String(selectedMonth);
 
-            const countryOK =
-                selectedCountry === "ALL" ||
-                d.Country ===
-                selectedCountry;
-
-            const yearOK =
-                selectedYear === "ALL" ||
-                String(d.Year) ===
-                String(selectedYear);
-
-            const monthOK =
-                selectedMonth === "ALL" ||
-                String(d.Month) ===
-                String(selectedMonth);
-
-            return (
-                countryOK &&
-                yearOK &&
-                monthOK
-            );
-        });
+        return countryOK && yearOK && monthOK;
+    });
 
     const typeData = [
-
         {
-            Type:
-                "Sale",
-
-            Sales:
-                d3.sum(
-                    dataset.filter(
-                        d =>
-                            d.TransactionType ===
-                            "Sale"
-                    ),
-                    d =>
-                        Number(
-                            d.LineAmount
-                        ) || 0
-                ),
-
-            Count:
+            Type: "Sale",
+            Sales: d3.sum(
                 dataset.filter(
-                    d =>
-                        d.TransactionType ===
-                        "Sale"
-                ).length
-        },
-
-        {
-            Type:
-                "Return/Cancelled",
-
-            Sales:
-                d3.sum(
-                    dataset.filter(
-                        d =>
-                            d.TransactionType ===
-                            "Return/Cancelled"
-                    ),
-                    d =>
-                        Number(
-                            d.LineAmount
-                        ) || 0
+                    d => d.TransactionType === "Sale"
                 ),
-
-            Count:
+                d => Number(d.LineAmount) || 0
+            ),
+            Count: dataset.filter(
+                d => d.TransactionType === "Sale"
+            ).length
+        },
+        {
+            Type: "Return/Cancelled",
+            Sales: d3.sum(
                 dataset.filter(
                     d =>
                         d.TransactionType ===
                         "Return/Cancelled"
-                ).length
+                ),
+                d => Number(d.LineAmount) || 0
+            ),
+            Count: dataset.filter(
+                d =>
+                    d.TransactionType ===
+                    "Return/Cancelled"
+            ).length
         }
     ];
 
-    const svg =
-        container.append("svg")
-            .attr(
-                "width",
-                "100%"
-            )
-            .attr(
-                "height",
-                "100%"
-            )
-            .attr(
-                "viewBox",
-                `0 0 ${bounds.width} ${bounds.height}`
-            )
-            .style(
-                "overflow",
-                "visible"
-            );
+    const svg = container.append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr("viewBox", `0 0 ${bounds.width} ${bounds.height}`)
+        .style("overflow", "visible");
 
-    const g =
-        svg.append("g")
-            .attr(
-                "transform",
-                `translate(
-                    ${margin.left},
-                    ${margin.top}
-                )`
-            );
-
-    const x =
-        d3.scaleBand()
-            .domain(
-                typeData.map(
-                    d => d.Type
-                )
-            )
-            .range(
-                [0, width]
-            )
-            .padding(
-                0.45
-            );
-
-    const maxValue =
-        d3.max(
-            typeData,
-            d => d.Sales
-        ) || 1;
-
-    const y =
-        d3.scaleLinear()
-            .domain(
-                [
-                    0,
-                    maxValue * 1.15
-                ]
-            )
-            .nice()
-            .range(
-                [
-                    height,
-                    0
-                ]
-            );
-
-    g.append("g")
+    const g = svg.append("g")
         .attr(
             "transform",
-            `translate(
-                0,
-                ${height}
-            )`
-        )
-        .call(
-            d3.axisBottom(x)
+            `translate(${margin.left},${margin.top})`
         );
+
+    const x = d3.scaleBand()
+        .domain(typeData.map(d => d.Type))
+        .range([0, width])
+        .padding(0.45);
+
+    const maxValue =
+        d3.max(typeData, d => d.Sales) || 1;
+
+    const y = d3.scaleLinear()
+        .domain([0, maxValue * 1.15])
+        .nice()
+        .range([height, 0]);
+
+    g.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x));
 
     g.append("g")
         .call(
@@ -2202,110 +1158,47 @@ function renderColumnChart() {
                 .tickFormat(
                     d =>
                         "£" +
-                        d3.format(".0f")(
-                            d / 1000
-                        ) +
+                        d3.format(".0f")(d / 1000) +
                         "k"
                 )
         );
 
-    addAxisLabel(
-        g,
-        {
-            x:
-                width / 2,
+    addAxisLabel(g, {
+        x: width / 2,
+        y: height + 52,
+        text: "ประเภทรายการ"
+    });
 
-            y:
-                height + 52,
+    addAxisLabel(g, {
+        x: -height / 2,
+        y: -margin.left + 22,
+        text: "มูลค่ารวม (£)",
+        rotate: -90
+    });
 
-            text:
-                "ประเภทรายการ"
-        }
-    );
-
-    addAxisLabel(
-        g,
-        {
-            x:
-                -height / 2,
-
-            y:
-                -margin.left + 22,
-
-            text:
-                "มูลค่ารวม (£)",
-
-            rotate:
-                -90
-        }
-    );
-
-    g.selectAll(
-        ".column"
-    )
-        .data(
-            typeData
-        )
+    g.selectAll(".column")
+        .data(typeData)
         .enter()
         .append("rect")
-        .attr(
-            "class",
-            "column"
-        )
-        .attr(
-            "x",
-            d =>
-                x(d.Type)
-        )
-        .attr(
-            "width",
-            x.bandwidth()
-        )
-        .attr(
-            "y",
-            d =>
-                y(d.Sales)
-        )
-        .attr(
-            "height",
-            d =>
-                height -
-                y(d.Sales)
-        )
-        .attr(
-            "rx",
-            6
-        )
+        .attr("class", "column")
+        .attr("x", d => x(d.Type))
+        .attr("width", x.bandwidth())
+        .attr("y", d => y(d.Sales))
+        .attr("height", d => height - y(d.Sales))
+        .attr("rx", 6)
         .attr(
             "fill",
-            d =>
-                TYPE_COLORS[
-                    d.Type
-                ]
+            d => TYPE_COLORS[d.Type]
         )
-        .on(
-            "mouseover",
-            (event, d) => {
-
-                showTooltip(
-                    event,
-
-                    `<b>${safeText(
-                        d.Type
-                    )}</b>
-                    <br>มูลค่ารายการ: £${d3.format(",.2f")(
-                        d.Sales
-                    )}
-                    <br>จำนวนรายการ: ${d3.format(",")(
-                        d.Count
-                    )}`
-                );
-            }
-        )
-        .on(
-            "mouseout",
-            hideTooltip
-        );
+        .on("mouseover", (event, d) => {
+            showTooltip(
+                event,
+                `<b>${safeText(d.Type)}</b>
+                 <br>มูลค่ารายการ: £${d3.format(",.2f")(d.Sales)}
+                 <br>จำนวนรายการ: ${d3.format(",")(d.Count)}`
+            );
+        })
+        .on("mouseout", hideTooltip);
 }
 
 /* =========================================================
@@ -2314,491 +1207,243 @@ function renderColumnChart() {
    ========================================================= */
 
 function renderScatterChart() {
-
-    const container =
-        d3.select(
-            "#scatterChart"
-        );
-
-    if (container.empty()) {
-        return;
-    }
+    const container = d3.select("#scatterChart");
+    if (container.empty()) return;
 
     container.html("");
 
-    const node =
-        container.node();
-
-    const bounds =
-        node.getBoundingClientRect();
+    const node = container.node();
+    const bounds = node.getBoundingClientRect();
 
     const margin = {
-
         top: 35,
-
         right: 30,
-
         bottom: 72,
-
         left: 75
     };
 
-    const outerWidth =
-        Math.max(
-            300,
-            bounds.width || 700
+    const outerWidth = Math.max(
+        300,
+        bounds.width || 700
+    );
+
+    const outerHeight = Math.max(
+        280,
+        bounds.height || 350
+    );
+
+    const width = Math.max(
+        200,
+        outerWidth - margin.left - margin.right
+    );
+
+    const height = Math.max(
+        180,
+        outerHeight - margin.top - margin.bottom
+    );
+
+    let dataset = filteredData.filter(d =>
+        Number.isFinite(d.UnitPrice) &&
+        Number.isFinite(d.Quantity) &&
+        d.UnitPrice >= 0 &&
+        d.Quantity >= 0
+    );
+
+    if (localScatterPrice !== "all") {
+        dataset = dataset.filter(
+            d =>
+                d.UnitPrice <=
+                Number(localScatterPrice)
         );
-
-    const outerHeight =
-        Math.max(
-            280,
-            bounds.height || 350
-        );
-
-    const width =
-        Math.max(
-            200,
-
-            outerWidth -
-            margin.left -
-            margin.right
-        );
-
-    const height =
-        Math.max(
-            180,
-
-            outerHeight -
-            margin.top -
-            margin.bottom
-        );
-
-    let dataset =
-        filteredData.filter(d =>
-
-            Number.isFinite(
-                d.UnitPrice
-            ) &&
-
-            Number.isFinite(
-                d.Quantity
-            ) &&
-
-            d.UnitPrice >= 0 &&
-
-            d.Quantity >= 0
-        );
-
-    if (
-        localScatterPrice !==
-        "all"
-    ) {
-
-        dataset =
-            dataset.filter(
-                d =>
-                    d.UnitPrice <=
-                    Number(
-                        localScatterPrice
-                    )
-            );
     }
 
-    if (
-        localScatterQty > 0
-    ) {
-
-        dataset =
-            dataset.filter(
-                d =>
-                    d.Quantity >=
-                    localScatterQty
-            );
+    if (localScatterQty > 0) {
+        dataset = dataset.filter(
+            d =>
+                d.Quantity >=
+                localScatterQty
+        );
     }
 
-    let sampleData =
-        dataset;
+    let sampleData = dataset;
 
-    if (
-        dataset.length > 500
-    ) {
-
-        sampleData =
-            d3.range(500)
-                .map(i => {
-
-                    const index =
-                        Math.floor(
-                            i *
-                            (
-                                dataset.length -
-                                1
-                            ) /
-                            499
-                        );
-
-                    return dataset[
-                        index
-                    ];
-                });
+    if (dataset.length > 500) {
+        sampleData = d3.range(500).map(i => {
+            const index = Math.floor(
+                i *
+                (dataset.length - 1) /
+                499
+            );
+            return dataset[index];
+        });
     }
 
-    const svg =
-        container.append("svg")
-            .attr(
-                "width",
-                "100%"
-            )
-            .attr(
-                "height",
-                "100%"
-            )
-            .attr(
-                "viewBox",
-                `0 0 ${outerWidth} ${outerHeight}`
-            )
-            .style(
-                "overflow",
-                "hidden"
-            );
+    const svg = container.append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr("viewBox", `0 0 ${outerWidth} ${outerHeight}`)
+        .style("overflow", "hidden");
 
-    const defs =
-        svg.append("defs");
+    const defs = svg.append("defs");
 
-    defs.append(
-        "clipPath"
-    )
-        .attr(
-            "id",
-            "scatterPlotClip"
-        )
+    defs.append("clipPath")
+        .attr("id", "scatterPlotClip")
         .append("rect")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", width)
+        .attr("height", height);
+
+    const g = svg.append("g")
         .attr(
-            "x",
-            0
-        )
-        .attr(
-            "y",
-            0
-        )
-        .attr(
-            "width",
-            width
-        )
-        .attr(
-            "height",
-            height
+            "transform",
+            `translate(${margin.left},${margin.top})`
         );
 
-    const g =
-        svg.append("g")
-            .attr(
-                "transform",
-                `translate(
-                    ${margin.left},
-                    ${margin.top}
-                )`
-            );
-
-    const plot =
-        g.append("g")
-            .attr(
-                "clip-path",
-                "url(#scatterPlotClip)"
-            );
+    const plot = g.append("g")
+        .attr("clip-path", "url(#scatterPlotClip)");
 
     const xMax =
-        d3.max(
-            sampleData,
-            d => d.UnitPrice
-        ) || 10;
+        d3.max(sampleData, d => d.UnitPrice) || 10;
 
     const yMax =
-        d3.max(
-            sampleData,
-            d => d.Quantity
-        ) || 10;
+        d3.max(sampleData, d => d.Quantity) || 10;
 
-    const x =
-        d3.scaleLinear()
-            .domain(
-                [
-                    0,
-                    Math.max(
-                        1,
-                        xMax * 1.05
-                    )
-                ]
-            )
-            .nice()
-            .range(
-                [
-                    0,
-                    width
-                ]
-            );
+    const x = d3.scaleLinear()
+        .domain([0, Math.max(1, xMax * 1.05)])
+        .nice()
+        .range([0, width]);
 
-    const y =
-        d3.scaleLinear()
-            .domain(
-                [
-                    0,
-                    Math.max(
-                        1,
-                        yMax * 1.05
-                    )
-                ]
-            )
-            .nice()
-            .range(
-                [
-                    height,
-                    0
-                ]
-            );
+    const y = d3.scaleLinear()
+        .domain([0, Math.max(1, yMax * 1.05)])
+        .nice()
+        .range([height, 0]);
 
-    const xAxis =
-        g.append("g")
-            .attr(
-                "transform",
-                `translate(
-                    0,
-                    ${height}
-                )`
-            )
-            .call(
-                d3.axisBottom(x)
-                    .ticks(6)
-            );
-
-    const yAxis =
-        g.append("g")
-            .call(
-                d3.axisLeft(y)
-                    .ticks(6)
-            );
-
-    addAxisLabel(
-        g,
-        {
-            x:
-                width / 2,
-
-            y:
-                height + 52,
-
-            text:
-                "ราคาต่อหน่วย (£)"
-        }
-    );
-
-    addAxisLabel(
-        g,
-        {
-            x:
-                -height / 2,
-
-            y:
-                -margin.left + 20,
-
-            text:
-                "ปริมาณสั่งซื้อ (ชิ้น)",
-
-            rotate:
-                -90
-        }
-    );
-
-    const dots =
-        plot.selectAll(
-            ".scatter-point"
+    const xAxis = g.append("g")
+        .attr(
+            "transform",
+            `translate(0,${height})`
         )
-        .data(
-            sampleData
-        )
+        .call(
+            d3.axisBottom(x)
+                .ticks(6)
+        );
+
+    const yAxis = g.append("g")
+        .call(
+            d3.axisLeft(y)
+                .ticks(6)
+        );
+
+    addAxisLabel(g, {
+        x: width / 2,
+        y: height + 52,
+        text: "ราคาต่อหน่วย (£)"
+    });
+
+    addAxisLabel(g, {
+        x: -height / 2,
+        y: -margin.left + 20,
+        text: "ปริมาณสั่งซื้อ (ชิ้น)",
+        rotate: -90
+    });
+
+    const dots = plot.selectAll(".scatter-point")
+        .data(sampleData)
         .enter()
         .append("circle")
-        .attr(
-            "class",
-            "scatter-point"
-        )
-        .attr(
-            "cx",
-            d =>
-                x(d.UnitPrice)
-        )
-        .attr(
-            "cy",
-            d =>
-                y(d.Quantity)
-        )
-        .attr(
-            "r",
-            4
-        )
+        .attr("class", "scatter-point")
+        .attr("cx", d => x(d.UnitPrice))
+        .attr("cy", d => y(d.Quantity))
+        .attr("r", 4)
         .attr(
             "fill",
             d =>
-                TYPE_COLORS[
-                    d.TransactionType
-                ] ||
+                TYPE_COLORS[d.TransactionType] ||
                 TYPE_COLORS.Sale
         )
-        .attr(
-            "opacity",
-            0.68
-        )
-        .on(
-            "mouseover",
-            (event, d) => {
-
-                showTooltip(
-                    event,
-
-                    `<b>${safeText(
-                        d.Description
-                    )}</b>
-                    <br>ประเภท: ${safeText(
-                        d.TransactionType
-                    )}
-                    <br>ราคา: £${d3.format(",.2f")(
-                        d.UnitPrice
-                    )}
-                    <br>จำนวน: ${d3.format(",")(
-                        d.Quantity
-                    )} ชิ้น`
-                );
-            }
-        )
-        .on(
-            "mouseout",
-            hideTooltip
-        );
+        .attr("opacity", 0.68)
+        .on("mouseover", (event, d) => {
+            showTooltip(
+                event,
+                `<b>${safeText(d.Description)}</b>
+                 <br>ประเภท: ${safeText(d.TransactionType)}
+                 <br>ราคา: £${d3.format(",.2f")(d.UnitPrice)}
+                 <br>จำนวน: ${d3.format(",")(d.Quantity)} ชิ้น`
+            );
+        })
+        .on("mouseout", hideTooltip);
 
     /*
-       Zoom applies only to the plot.
-       Axis labels stay fixed.
-       Clip path prevents dots escaping.
+       IMPORTANT:
+       Zoom is applied to the plot area only.
+       The axes stay in their own position.
+       The clipPath prevents points from escaping
+       outside the graph.
     */
 
-    const zoom =
-        d3.zoom()
-            .scaleExtent(
-                [
-                    1,
-                    5
-                ]
-            )
-            .extent(
-                [
-                    [0, 0],
-                    [
-                        width,
-                        height
-                    ]
-                ]
-            )
-            .translateExtent(
-                [
-                    [0, 0],
-                    [
-                        width,
-                        height
-                    ]
-                ]
-            )
-            .on(
-                "zoom",
-                event => {
+    const zoom = d3.zoom()
+        .scaleExtent([1, 5])
+        .extent([
+            [0, 0],
+            [width, height]
+        ])
+        .translateExtent([
+            [0, 0],
+            [width, height]
+        ])
+        .on("zoom", event => {
+            const transform = event.transform;
 
-                    const transform =
-                        event.transform;
+            const newX = transform.rescaleX(x);
+            const newY = transform.rescaleY(y);
 
-                    const newX =
-                        transform.rescaleX(
-                            x
-                        );
-
-                    const newY =
-                        transform.rescaleY(
-                            y
-                        );
-
-                    xAxis.call(
-                        d3.axisBottom(
-                            newX
-                        )
-                        .ticks(6)
-                    );
-
-                    yAxis.call(
-                        d3.axisLeft(
-                            newY
-                        )
-                        .ticks(6)
-                    );
-
-                    dots
-                        .attr(
-                            "cx",
-                            d =>
-                                newX(
-                                    d.UnitPrice
-                                )
-                        )
-                        .attr(
-                            "cy",
-                            d =>
-                                newY(
-                                    d.Quantity
-                                )
-                        );
-                }
+            xAxis.call(
+                d3.axisBottom(newX)
+                    .ticks(6)
             );
 
-    const zoomLayer =
-        plot.append("rect")
-            .attr(
-                "class",
-                "zoom-layer"
-            )
-            .attr(
-                "width",
-                width
-            )
-            .attr(
-                "height",
-                height
-            )
-            .style(
-                "fill",
-                "none"
-            )
-            .style(
-                "pointer-events",
-                "all"
+            yAxis.call(
+                d3.axisLeft(newY)
+                    .ticks(6)
             );
 
-    zoomLayer.call(
-        zoom
-    );
+            dots
+                .attr(
+                    "cx",
+                    d => newX(d.UnitPrice)
+                )
+                .attr(
+                    "cy",
+                    d => newY(d.Quantity)
+                );
+        });
 
-    dots.raise();
+    /*
+       Invisible zoom layer only inside plot area.
+       This prevents the whole SVG / labels from moving.
+    */
 
-    d3.select(
-        "#resetZoomBtn"
-    )
-        .on(
-            "click",
-            () => {
+    const zoomLayer = plot.append("rect")
+        .attr("class", "zoom-layer")
+        .attr("width", width)
+        .attr("height", height)
+        .style("fill", "none")
+        .style("pointer-events", "all");
 
-                zoomLayer
-                    .transition()
-                    .duration(400)
-                    .call(
-                        zoom.transform,
-                        d3.zoomIdentity
-                    );
-            }
-        );
+    /* Attach zoom to the plot group, not the whole SVG.
+       Events from dots bubble to this group, while the
+       transparent layer handles empty plot space. */
+    plot.call(zoom);
+
+    d3.select("#resetZoomBtn")
+        .on("click", () => {
+            zoomLayer
+                .transition()
+                .duration(400)
+                .call(
+                    zoom.transform,
+                    d3.zoomIdentity
+                );
+        });
 }
