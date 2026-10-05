@@ -644,16 +644,23 @@ function renderBarChart() {
         d3.rollup(
             filteredData,
             values => ({
-                Sales: d3.sum(values, d => Number(d.LineAmount) || 0),
-                Qty: d3.sum(values, d => Number(d.Quantity) || 0)
+                Sales: d3.sum(
+                    values,
+                    d => Number(d.LineAmount) || 0
+                ),
+                Qty: d3.sum(
+                    values,
+                    d => Number(d.Quantity) || 0
+                )
             }),
             d => d.Description
         ),
         ([description, stats]) => ({
             FullDesc: description,
-            ShortDesc: description.length > 25
-                ? description.substring(0, 22) + "..."
-                : description,
+            ShortDesc:
+                description.length > 25
+                    ? description.substring(0, 22) + "..."
+                    : description,
             Sales: stats.Sales,
             Qty: stats.Qty
         })
@@ -680,7 +687,10 @@ function renderBarChart() {
         .style("overflow", "visible");
 
     const g = svg.append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
+        .attr(
+            "transform",
+            `translate(${margin.left},${margin.top})`
+        );
 
     const y = d3.scaleBand()
         .domain(productData.map(d => d.ShortDesc))
@@ -689,7 +699,10 @@ function renderBarChart() {
 
     const metricMax = d3.max(
         productData,
-        d => localProductMetric === "qty" ? d.Qty : d.Sales
+        d =>
+            localProductMetric === "qty"
+                ? d.Qty
+                : d.Sales
     ) || 1;
 
     const x = d3.scaleLinear()
@@ -708,30 +721,28 @@ function renderBarChart() {
                 .tickFormat(d =>
                     localProductMetric === "qty"
                         ? d3.format(",")(d)
-                        : "£" + d3.format(".0f")(d / 1000) + "k"
+                        : "£" +
+                          d3.format(".0f")(d / 1000) +
+                          "k"
                 )
         );
 
     addAxisLabel(g, {
         x: width / 2,
         y: height + 48,
-        text: localProductMetric === "qty"
-            ? "จำนวนชิ้น"
-            : "มูลค่ารายการ (£)"
+        text:
+            localProductMetric === "qty"
+                ? "จำนวนชิ้น"
+                : "มูลค่ารายการ (£)"
     });
 
-    /* ชื่อแกน Y */
     addAxisLabel(g, {
         x: -height / 2,
-        y: -60,
+        y: -70,
         text: "รายชื่อสินค้า",
         rotate: -90
     });
 
-    /* =====================================================
-       BARS + ANIMATION
-       เริ่มจาก 0 แล้วค่อย ๆ ขยายทีละแท่ง
-       ===================================================== */
     const bars = g.selectAll(".bar-rect")
         .data(productData)
         .enter()
@@ -741,14 +752,25 @@ function renderBarChart() {
         .attr("y", d => y(d.ShortDesc))
         .attr("height", y.bandwidth())
         .attr("rx", 5)
-        .attr("fill", (d, i) => BAR_COLORS[i % BAR_COLORS.length])
-        .attr("width", 0);
+        .attr(
+            "fill",
+            (d, i) => BAR_COLORS[i % BAR_COLORS.length]
+        )
+        .attr("width", 0)
+        .on("mouseover", (event, d) => {
+            showTooltip(
+                event,
+                `<b>${safeText(d.FullDesc)}</b>
+                 <br>ยอดขาย: £${d3.format(",.2f")(d.Sales)}
+                 <br>จำนวน: ${d3.format(",")(d.Qty)} ชิ้น`
+            );
+        })
+        .on("mouseout", hideTooltip);
 
     bars
-        .attr("width", 0)
         .transition()
-        .duration(900)
-        .delay((d, i) => i * 60)
+        .duration(850)
+        .delay((d, i) => i * 55)
         .ease(d3.easeCubicOut)
         .attr("width", d =>
             x(
@@ -758,18 +780,23 @@ function renderBarChart() {
             )
         );
 
-    /* Tooltip ยังคงทำงานหลัง animation */
-    bars
-        .on("mouseover", (event, d) => {
-            showTooltip(
-                event,
-                `<b>${safeText(d.FullDesc)}</b>
-                 <br>มูลค่ารายการ: £${d3.format(",.2f")(d.Sales)}
-                 <br>จำนวน: ${d3.format(",")(d.Qty)} ชิ้น`
-            );
-        })
-        .on("mouseout", hideTooltip);
-}
+    // Color legend: every colored bar is mapped to its product name.
+    const barLegend = d3.select("#barLegend");
+    if (!barLegend.empty()) {
+        barLegend.html("");
+        productData.forEach((d, i) => {
+            const item = barLegend.append("span")
+                .attr("class", "legend-item")
+                .attr("title", d.FullDesc);
+            item.append("span")
+                .attr("class", "legend-swatch")
+                .style("background", BAR_COLORS[i % BAR_COLORS.length]);
+            item.append("span")
+                .attr("class", "legend-label")
+                .text(d.ShortDesc);
+        });
+    }
+} 
 
 /* =========================================================
    2. DONUT CHART
@@ -1166,7 +1193,7 @@ function renderColumnChart() {
 
     addAxisLabel(g, {
         x: -height / 2,
-        y: -margin.left + 22,
+        y: -58,
         text: "มูลค่ารวม (£)",
         rotate: -90
     });
@@ -1338,7 +1365,7 @@ function renderScatterChart() {
 
     addAxisLabel(g, {
         x: -height / 2,
-        y: -margin.left + 20,
+        y: -58,
         text: "ปริมาณสั่งซื้อ (ชิ้น)",
         rotate: -90
     });
@@ -1435,6 +1462,21 @@ function renderScatterChart() {
     */
 
     dots.raise();
+
+    const scatterLegend = d3.select("#scatterLegend");
+    if (!scatterLegend.empty()) {
+        scatterLegend.html("");
+        ["Sale", "Return/Cancelled"].forEach(type => {
+            const item = scatterLegend.append("span")
+                .attr("class", "legend-item");
+            item.append("span")
+                .attr("class", "legend-swatch")
+                .style("background", TYPE_COLORS[type] || TYPE_COLORS.Sale);
+            item.append("span")
+                .attr("class", "legend-label")
+                .text(type === "Return/Cancelled" ? "Return/Cancelled = รายการคืน/ยกเลิก" : "Sale = รายการขาย");
+        });
+    }
 
     d3.select("#resetZoomBtn")
         .on("click", () => {
