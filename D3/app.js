@@ -1341,12 +1341,15 @@ function renderScatterChart() {
         text: "ราคาต่อหน่วย (£)"
     });
 
-    addAxisLabel(g, {
-        x: -height / 2,
-        y: -margin.left + 20,
-        text: "ปริมาณสั่งซื้อ (ชิ้น)",
-        rotate: -90
-    });
+    /* Vertical Y-axis label: place it on the SVG itself so it cannot be clipped */
+    svg.append("text")
+        .attr("class", "axis-label scatter-y-axis-label")
+        .attr(
+            "transform",
+            `translate(20,${margin.top + height / 2}) rotate(-90)`
+        )
+        .attr("text-anchor", "middle")
+        .text("ปริมาณสั่งซื้อ (ชิ้น)");
 
     const dots = plot.selectAll(".scatter-point")
         .data(sampleData)
