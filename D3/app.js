@@ -42,17 +42,10 @@ const MONTH_NAMES_TH = [
     "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
 ];
 
-function bootDashboard() {
-    console.log("Dashboard booting...");
+document.addEventListener("DOMContentLoaded", () => {
     setupEvents();
     loadData();
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bootDashboard, { once: true });
-} else {
-    bootDashboard();
-}
+});
 
 /* =========================================================
    HELPERS
@@ -211,19 +204,6 @@ async function ensureLibraries() {
 
 async function loadData() {
     try {
-        ["#barChart", "#donutChart", "#columnChart", "#scatterChart"].forEach(selector => {
-            const box = d3.select(selector);
-            if (!box.empty()) {
-                box.html("")
-                    .append("div")
-                    .style("padding", "80px")
-                    .style("text-align", "center")
-                    .style("color", "#806f89")
-                    .style("font-weight", "600")
-                    .text("กำลังโหลดข้อมูล...");
-            }
-        });
-
         console.log("กำลังเตรียม D3 + SheetJS...");
         await ensureLibraries();
         console.log("กำลังโหลด:", DATA_URL);
@@ -234,10 +214,7 @@ async function loadData() {
 
         const response = await fetch(
             DATA_URL + "?v=" + Date.now(),
-            {
-                cache: "no-store",
-                credentials: "same-origin"
-            }
+            { cache: "no-store" }
         );
 
         if (!response.ok) {
@@ -820,14 +797,11 @@ function renderBarChart() {
             "fill",
             (d, i) => BAR_COLORS[i % BAR_COLORS.length]
         )
+        .attr("width", 0)
+        .transition().duration(850).delay((d,i)=>i*55).ease(d3.easeCubicOut)
         .attr(
             "width",
-            d =>
-                x(
-                    localProductMetric === "qty"
-                        ? d.Qty
-                        : d.Sales
-                )
+            d => x(localProductMetric === "qty" ? d.Qty : d.Sales)
         )
         .on("mouseover", (event, d) => {
             showTooltip(
@@ -954,6 +928,10 @@ function renderDonutChart() {
         .innerRadius(radius * 0.52)
         .outerRadius(radius * 1.05);
 
+    const startArc = d3.arc()
+        .innerRadius(radius * 0.55)
+        .outerRadius(radius * 0.55);
+
     const pieData = pie(countryData);
 
     const paths = g.selectAll(".country-slice")
@@ -968,13 +946,25 @@ function renderDonutChart() {
         )
         .attr("stroke", "#ffffff")
         .attr("stroke-width", 2)
-        .attr("d", arc)
+        .attr("d", startArc)
+        .style("opacity", 0.15)
         .style("cursor", d =>
             d.data.Country === "Others"
                 ? "default"
                 : "pointer"
-        )
-        .on("mouseover", function (event, d) {
+        );
+
+    paths.transition()
+        .duration(900)
+        .delay((d,i)=>i*70)
+        .ease(d3.easeCubicOut)
+        .style("opacity",1)
+        .attrTween("d", function(d) {
+            const interpolate = d3.interpolate(startArc(d), arc(d));
+            return t => interpolate(t);
+        });
+
+    paths.on("mouseover", function (event, d) {
             d3.select(this)
                 .transition()
                 .duration(120)
@@ -1247,13 +1237,16 @@ function renderColumnChart() {
         .attr("class", "column")
         .attr("x", d => x(d.Type))
         .attr("width", x.bandwidth())
-        .attr("y", d => y(d.Sales))
-        .attr("height", d => height - y(d.Sales))
+        .attr("y", height)
+        .attr("height", 0)
         .attr("rx", 6)
         .attr(
             "fill",
             d => TYPE_COLORS[d.Type]
         )
+        .transition().duration(850).delay((d,i)=>i*180).ease(d3.easeCubicOut)
+        .attr("y", d => y(d.Sales))
+        .attr("height", d => height - y(d.Sales))
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
@@ -1419,14 +1412,17 @@ function renderScatterChart() {
         .attr("class", "scatter-point")
         .attr("cx", d => x(d.UnitPrice))
         .attr("cy", d => y(d.Quantity))
-        .attr("r", 4)
+        .attr("r", 0)
         .attr(
             "fill",
             d =>
                 TYPE_COLORS[d.TransactionType] ||
                 TYPE_COLORS.Sale
         )
-        .attr("opacity", 0.68)
+        .attr("opacity", 0)
+        .transition().duration(650).delay((d,i)=>Math.min(i*2,900)).ease(d3.easeCubicOut)
+        .attr("r",4)
+        .attr("opacity",0.68)
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
