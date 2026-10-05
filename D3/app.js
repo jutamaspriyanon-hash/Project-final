@@ -84,7 +84,7 @@ function addAxisLabel(g, {
         .text(text);
 
     if (rotate !== null) {
-        label.attr("transform", `rotate(${rotate},${x},${y})`);
+        label.attr("transform", `rotate(${rotate})`);
     }
 
     return label;
@@ -1169,12 +1169,17 @@ function renderColumnChart() {
         text: "ประเภทรายการ"
     });
 
-    addAxisLabel(g, {
-        x: -height / 2,
-        y: -margin.left + 22,
-        text: "มูลค่ารวม (£)",
-        rotate: -90
-    });
+    g.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", -58)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("font-weight", "600")
+        .style("fill", "#806f89")
+        .style("pointer-events", "none")
+        .text("มูลค่ารวม (£)");
 
     g.selectAll(".column")
         .data(typeData)
