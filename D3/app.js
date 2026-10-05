@@ -84,7 +84,7 @@ function addAxisLabel(g, {
         .text(text);
 
     if (rotate !== null) {
-        label.attr("transform", `rotate(${rotate})`);
+        label.attr("transform", `rotate(${rotate},${x},${y})`);
     }
 
     return label;
@@ -163,8 +163,46 @@ function setupEvents() {
    LOAD XLSB
    ========================================================= */
 
+function loadExternalScript(src, globalName) {
+    return new Promise((resolve, reject) => {
+        if (globalName && window[globalName]) {
+            resolve();
+            return;
+        }
+
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+            existing.addEventListener("load", resolve, { once: true });
+            existing.addEventListener("error", () => reject(new Error(`โหลดไลบรารีไม่ได้: ${src}`)), { once: true });
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = false;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error(`โหลดไลบรารีไม่ได้: ${src}`));
+        document.head.appendChild(script);
+    });
+}
+
+async function ensureLibraries() {
+    if (typeof d3 === "undefined") {
+        await loadExternalScript("https://d3js.org/d3.v7.min.js", "d3");
+    }
+
+    if (typeof XLSX === "undefined") {
+        await loadExternalScript(
+            "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js",
+            "XLSX"
+        );
+    }
+}
+
 async function loadData() {
     try {
+        console.log("กำลังเตรียม D3 + SheetJS...");
+        await ensureLibraries();
         console.log("กำลังโหลด:", DATA_URL);
 
         if (typeof XLSX === "undefined") {
@@ -738,12 +776,12 @@ function renderBarChart() {
 
     addAxisLabel(g, {
         x: -height / 2,
-        y: -70,
+        y: -margin.left + 18,
         text: "รายชื่อสินค้า",
         rotate: -90
     });
 
-    const bars = g.selectAll(".bar-rect")
+    g.selectAll(".bar-rect")
         .data(productData)
         .enter()
         .append("rect")
@@ -756,7 +794,15 @@ function renderBarChart() {
             "fill",
             (d, i) => BAR_COLORS[i % BAR_COLORS.length]
         )
-        .attr("width", 0)
+        .attr(
+            "width",
+            d =>
+                x(
+                    localProductMetric === "qty"
+                        ? d.Qty
+                        : d.Sales
+                )
+        )
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
@@ -766,37 +812,7 @@ function renderBarChart() {
             );
         })
         .on("mouseout", hideTooltip);
-
-    bars
-        .transition()
-        .duration(850)
-        .delay((d, i) => i * 55)
-        .ease(d3.easeCubicOut)
-        .attr("width", d =>
-            x(
-                localProductMetric === "qty"
-                    ? d.Qty
-                    : d.Sales
-            )
-        );
-
-    // Color legend: every colored bar is mapped to its product name.
-    const barLegend = d3.select("#barLegend");
-    if (!barLegend.empty()) {
-        barLegend.html("");
-        productData.forEach((d, i) => {
-            const item = barLegend.append("span")
-                .attr("class", "legend-item")
-                .attr("title", d.FullDesc);
-            item.append("span")
-                .attr("class", "legend-swatch")
-                .style("background", BAR_COLORS[i % BAR_COLORS.length]);
-            item.append("span")
-                .attr("class", "legend-label")
-                .text(d.ShortDesc);
-        });
-    }
-} 
+}
 
 /* =========================================================
    2. DONUT CHART
@@ -1193,7 +1209,7 @@ function renderColumnChart() {
 
     addAxisLabel(g, {
         x: -height / 2,
-        y: -58,
+        y: -margin.left + 22,
         text: "มูลค่ารวม (£)",
         rotate: -90
     });
@@ -1365,7 +1381,7 @@ function renderScatterChart() {
 
     addAxisLabel(g, {
         x: -height / 2,
-        y: -58,
+        y: -margin.left + 20,
         text: "ปริมาณสั่งซื้อ (ชิ้น)",
         rotate: -90
     });
@@ -1462,21 +1478,6 @@ function renderScatterChart() {
     */
 
     dots.raise();
-
-    const scatterLegend = d3.select("#scatterLegend");
-    if (!scatterLegend.empty()) {
-        scatterLegend.html("");
-        ["Sale", "Return/Cancelled"].forEach(type => {
-            const item = scatterLegend.append("span")
-                .attr("class", "legend-item");
-            item.append("span")
-                .attr("class", "legend-swatch")
-                .style("background", TYPE_COLORS[type] || TYPE_COLORS.Sale);
-            item.append("span")
-                .attr("class", "legend-label")
-                .text(type === "Return/Cancelled" ? "Return/Cancelled = รายการคืน/ยกเลิก" : "Sale = รายการขาย");
-        });
-    }
 
     d3.select("#resetZoomBtn")
         .on("click", () => {
