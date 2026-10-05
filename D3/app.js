@@ -42,15 +42,10 @@ const MONTH_NAMES_TH = [
     "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
 ];
 
-function bootDashboard() {
+document.addEventListener("DOMContentLoaded", () => {
     setupEvents();
     loadData();
-}
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bootDashboard, { once: true });
-} else {
-    bootDashboard();
-}
+});
 
 /* =========================================================
    HELPERS
@@ -209,7 +204,6 @@ async function ensureLibraries() {
 
 async function loadData() {
     try {
-        console.log("%c D3 Dashboard build 1008 - animation + axes ", "background:#40364b;color:#fff;padding:4px 8px;border-radius:4px");
         console.log("กำลังเตรียม D3 + SheetJS...");
         await ensureLibraries();
         console.log("กำลังโหลด:", DATA_URL);
@@ -666,9 +660,6 @@ function renderBarChart() {
     if (container.empty()) return;
 
     container.html("");
-    container.append("div")
-        .attr("class", "chart-loading")
-        .style("display", "none");
 
     const node = container.node();
     const bounds = node.getBoundingClientRect();
@@ -809,7 +800,7 @@ function renderBarChart() {
         .attr("width", 0)
         .transition()
         .duration(900)
-        .delay((d, i) => i * 70)
+        .delay((d, i) => i * 55)
         .ease(d3.easeCubicOut)
         .attr(
             "width",
@@ -820,6 +811,7 @@ function renderBarChart() {
                         : d.Sales
                 )
         )
+        .selection()
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
@@ -846,13 +838,6 @@ function renderDonutChart() {
 
     const fullWidth = Math.max(360, bounds.width || 600);
     const height = Math.max(350, bounds.height || 350);
-    container.append("div")
-        .style("text-align", "center")
-        .style("font-size", "12px")
-        .style("font-weight", "600")
-        .style("color", "#806f89")
-        .style("margin-bottom", "4px")
-        .text("X: ประเทศ  |  Y: มูลค่ารายการ (£)");
 
     const donutWidth =
         fullWidth <= 600
@@ -966,27 +951,16 @@ function renderDonutChart() {
         )
         .attr("stroke", "#ffffff")
         .attr("stroke-width", 2)
-        .attr("d", d3.arc()
-            .innerRadius(radius * 0.55)
-            .outerRadius(radius * 0.55)
-        )
+        .attr("d", d => arc({
+            ...d,
+            startAngle: d.startAngle,
+            endAngle: d.startAngle
+        }))
         .style("cursor", d =>
             d.data.Country === "Others"
                 ? "default"
                 : "pointer"
         )
-        .transition()
-        .duration(1000)
-        .delay((d, i) => i * 90)
-        .ease(d3.easeCubicOut)
-        .attrTween("d", function(d) {
-            const start = d3.arc()
-                .innerRadius(radius * 0.55)
-                .outerRadius(radius * 0.55);
-            const interpolate = d3.interpolate(start(d), arc(d));
-            return t => interpolate(t);
-        })
-        .selection()
         .on("mouseover", function (event, d) {
             d3.select(this)
                 .transition()
@@ -1273,6 +1247,7 @@ function renderColumnChart() {
         .ease(d3.easeCubicOut)
         .attr("y", d => y(d.Sales))
         .attr("height", d => height - y(d.Sales))
+        .selection()
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
@@ -1446,11 +1421,6 @@ function renderScatterChart() {
                 TYPE_COLORS.Sale
         )
         .attr("opacity", 0.68)
-        .transition()
-        .duration(650)
-        .delay((d, i) => Math.min(i * 2, 900))
-        .ease(d3.easeCubicOut)
-        .attr("r", 4)
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
@@ -1461,6 +1431,13 @@ function renderScatterChart() {
             );
         })
         .on("mouseout", hideTooltip);
+
+    dots
+        .transition()
+        .duration(650)
+        .delay((d, i) => Math.min(i * 3, 1200))
+        .ease(d3.easeBackOut.overshoot(1.2))
+        .attr("r", 4);
 
     /*
        IMPORTANT:
