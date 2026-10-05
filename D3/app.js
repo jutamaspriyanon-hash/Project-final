@@ -73,10 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', renderCharts);
 });
 
-function loadData() {
-  // Normal mode: load the CSV file next to this dashboard.
-  // Local-file fallback: use the embedded copy so charts still work when
-  // index.html is opened directly with file:// and the browser blocks d3.csv().
+async function loadData() {
+  // Load the REAL CSV file next to index.html.
+  // Do not silently use embedded_data.js because it may be an old/partial dataset.
   const loadRows = rows => {
     globalDataset = rows.map(d => {
       const date = parseInvoiceDate(d.InvoiceDate);
@@ -100,18 +99,22 @@ function loadData() {
     populateYearDropdown();
     populateMonthDropdown();
     updateDashboard();
+
+    console.info(`Loaded ${globalDataset.length.toLocaleString()} valid rows from ${DATA_URL}`);
   };
 
-  d3.csv(DATA_URL).then(loadRows).catch(err => {
-    console.warn('CSV fetch was blocked or unavailable. Using embedded dashboard data instead.', err);
-    if (typeof window.EMBEDDED_ONLINE_RETAIL_CSV === 'string') {
-      loadRows(d3.csvParse(window.EMBEDDED_ONLINE_RETAIL_CSV));
-    } else {
-      console.error('No embedded data is available.', err);
-    }
-  });
+  try {
+    const rows = await d3.csv(DATA_URL);
+    if (!rows.length) throw new Error('CSV file is empty.');
+    loadRows(rows);
+  } catch (err) {
+    console.error(`Cannot load ${DATA_URL}:`, err);
+    const box = document.createElement('div');
+    box.style.cssText = 'position:fixed;inset:20px;z-index:99999;padding:24px;background:#fff1f2;color:#881337;border:1px solid #fecdd3;border-radius:16px;font-family:Sarabun,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.15);';
+    box.innerHTML = `<h2>ไม่สามารถโหลดข้อมูล CSV ได้</h2><p>ต้องวางไฟล์ <b>${DATA_URL}</b> ไว้ในโฟลเดอร์เดียวกับ <b>index.html</b></p><p>${location.protocol === 'file:' ? 'ถ้าเปิด index.html ด้วยการดับเบิลคลิก ให้เปิดผ่าน Live Server แทน เพราะเบราว์เซอร์อาจบล็อกการอ่าน CSV' : 'ตรวจสอบชื่อไฟล์และตำแหน่งไฟล์อีกครั้ง'}</p><small>${String(err?.message || err)}</small>`;
+    document.body.appendChild(box);
+  }
 }
-
 
 function parseInvoiceDate(value) {
   if (!value) return null;
