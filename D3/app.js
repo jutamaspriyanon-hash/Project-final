@@ -1483,64 +1483,44 @@ function renderDonutChart() {
                LEGEND HOVER
             ================================================= */
 
-            item.on(
-                "mouseenter",
-                function (event) {
-
+                        item.on(
+                "mouseleave",
+                function () {
                     paths
-
-                        .filter(
-                            p =>
-                                p.data.Country ===
-                                d.Country
+                        .filter(p =>
+                            p.data.Country === d.Country
                         )
-
                         .interrupt()
-
                         .transition()
                         .duration(150)
+                        .attr("d", arc);
 
-                        .attr(
-                            "d",
-                            hoverArc
-                        );
-
-
-                    const percent =
-                        totalValue > 0
-                            ? (
-                                d.Value /
-                                totalValue
-                            ) * 100
-                            : 0;
-
-
-                    showTooltip(
-
-                        event,
-
-                        `<b>${safeText(
-                            d.Country
-                        )}</b>
-
-                        <br>
-                        จำนวนรายการ:
-                        ${d3.format(",")(
-                            d.Count
-                        )}
-
-                        <br>
-                        มูลค่า:
-                        £${d3.format(",.2f")(
-                            d.Value
-                        )}
-
-                        <br>
-                        สัดส่วน:
-                        ${percent.toFixed(1)}%`
-                    );
+                    hideTooltip();
                 }
             );
+
+            item.on(
+                "click",
+                function () {
+
+                    if (d.Country !== "Others") {
+
+                        selectedCountry = d.Country;
+
+                        d3.select("#countryFilter")
+                            .property(
+                                "value",
+                                selectedCountry
+                            );
+
+                        applyFilters();
+                    }
+                }
+            );
+
+        }
+    );
+}
 
 
             /* =================================================
