@@ -84,7 +84,7 @@ function addAxisLabel(g, {
         .text(text);
 
     if (rotate !== null) {
-        label.attr("transform", `rotate(${rotate})`);
+        label.attr("transform", `rotate(${rotate},${x},${y})`);
     }
 
     return label;
@@ -644,23 +644,16 @@ function renderBarChart() {
         d3.rollup(
             filteredData,
             values => ({
-                Sales: d3.sum(
-                    values,
-                    d => Number(d.LineAmount) || 0
-                ),
-                Qty: d3.sum(
-                    values,
-                    d => Number(d.Quantity) || 0
-                )
+                Sales: d3.sum(values, d => Number(d.LineAmount) || 0),
+                Qty: d3.sum(values, d => Number(d.Quantity) || 0)
             }),
             d => d.Description
         ),
         ([description, stats]) => ({
             FullDesc: description,
-            ShortDesc:
-                description.length > 25
-                    ? description.substring(0, 22) + "..."
-                    : description,
+            ShortDesc: description.length > 25
+                ? description.substring(0, 22) + "..."
+                : description,
             Sales: stats.Sales,
             Qty: stats.Qty
         })
@@ -687,10 +680,7 @@ function renderBarChart() {
         .style("overflow", "visible");
 
     const g = svg.append("g")
-        .attr(
-            "transform",
-            `translate(${margin.left},${margin.top})`
-        );
+        .attr("transform", `translate(${margin.left},${margin.top})`);
 
     const y = d3.scaleBand()
         .domain(productData.map(d => d.ShortDesc))
@@ -699,10 +689,7 @@ function renderBarChart() {
 
     const metricMax = d3.max(
         productData,
-        d =>
-            localProductMetric === "qty"
-                ? d.Qty
-                : d.Sales
+        d => localProductMetric === "qty" ? d.Qty : d.Sales
     ) || 1;
 
     const x = d3.scaleLinear()
@@ -721,29 +708,36 @@ function renderBarChart() {
                 .tickFormat(d =>
                     localProductMetric === "qty"
                         ? d3.format(",")(d)
-                        : "£" +
-                          d3.format(".0f")(d / 1000) +
-                          "k"
+                        : "£" + d3.format(".0f")(d / 1000) + "k"
                 )
         );
 
     addAxisLabel(g, {
         x: width / 2,
         y: height + 48,
-        text:
-            localProductMetric === "qty"
-                ? "จำนวนชิ้น"
-                : "มูลค่ารายการ (£)"
+        text: localProductMetric === "qty"
+            ? "จำนวนชิ้น"
+            : "มูลค่ารายการ (£)"
     });
 
-    addAxisLabel(g, {
-        x: -height / 2,
-        y: -margin.left + 18,
-        text: "รายชื่อสินค้า",
-        rotate: -90
-    });
+    /* ชื่อแกน Y: วางไว้ใน SVG และหมุนรอบตัวเองอย่างถูกต้อง */
+    g.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("x", -height / 2)
+        .attr("y", -155)
+        .attr("text-anchor", "middle")
+        .style("font-size", "12px")
+        .style("font-weight", "600")
+        .style("fill", "#806f89")
+        .style("pointer-events", "none")
+        .text("รายชื่อสินค้า");
 
-    g.selectAll(".bar-rect")
+    /* =====================================================
+       BARS + ANIMATION
+       เริ่มจาก 0 แล้วค่อย ๆ ขยายทีละแท่ง
+       ===================================================== */
+    const bars = g.selectAll(".bar-rect")
         .data(productData)
         .enter()
         .append("rect")
@@ -752,24 +746,28 @@ function renderBarChart() {
         .attr("y", d => y(d.ShortDesc))
         .attr("height", y.bandwidth())
         .attr("rx", 5)
-        .attr(
-            "fill",
-            (d, i) => BAR_COLORS[i % BAR_COLORS.length]
-        )
-        .attr(
-            "width",
-            d =>
-                x(
-                    localProductMetric === "qty"
-                        ? d.Qty
-                        : d.Sales
-                )
-        )
+        .attr("fill", (d, i) => BAR_COLORS[i % BAR_COLORS.length])
+        .attr("width", 0);
+
+    bars.transition()
+        .duration(700)
+        .delay((d, i) => i * 45)
+        .ease(d3.easeCubicOut)
+        .attr("width", d =>
+            x(
+                localProductMetric === "qty"
+                    ? d.Qty
+                    : d.Sales
+            )
+        );
+
+    /* Tooltip ยังคงทำงานหลัง animation */
+    bars
         .on("mouseover", (event, d) => {
             showTooltip(
                 event,
                 `<b>${safeText(d.FullDesc)}</b>
-                 <br>ยอดขาย: £${d3.format(",.2f")(d.Sales)}
+                 <br>มูลค่ารายการ: £${d3.format(",.2f")(d.Sales)}
                  <br>จำนวน: ${d3.format(",")(d.Qty)} ชิ้น`
             );
         })
@@ -1055,21 +1053,6 @@ function renderColumnChart() {
 
     container.html("");
 
-    // Always restore the Sale/Return color legend above this chart.
-    const card = container.node().closest(".chart-card");
-    if (card) {
-        let legend = card.querySelector(".chart-note");
-        if (!legend) {
-            legend = document.createElement("div");
-            legend.className = "chart-note";
-            container.node().parentNode.insertBefore(legend, container.node());
-        }
-        legend.innerHTML =
-            '<span class="legend-dot sale"></span> Sale = รายการขาย' +
-            '<span style="display:inline-block;width:14px"></span>' +
-            '<span class="legend-dot ret"></span> Return = รายการคืน/ยกเลิก';
-    }
-
     const node = container.node();
     const bounds = node.getBoundingClientRect();
 
@@ -1184,16 +1167,12 @@ function renderColumnChart() {
         text: "ประเภทรายการ"
     });
 
-    g.append("text")
-        .attr("class", "axis-label y-axis-title")
-        .attr("transform", `translate(-52,${height / 2}) rotate(-90)`)
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "middle")
-        .style("font-size", "12px")
-        .style("font-weight", "600")
-        .style("fill", "#806f89")
-        .style("pointer-events", "none")
-        .text("มูลค่ารวม (£)");
+    addAxisLabel(g, {
+        x: -height / 2,
+        y: -margin.left + 22,
+        text: "มูลค่ารวม (£)",
+        rotate: -90
+    });
 
     g.selectAll(".column")
         .data(typeData)
@@ -1360,15 +1339,12 @@ function renderScatterChart() {
         text: "ราคาต่อหน่วย (£)"
     });
 
-    /* Vertical Y-axis label: place it on the SVG itself so it cannot be clipped */
-    svg.append("text")
-        .attr("class", "axis-label scatter-y-axis-label")
-        .attr(
-            "transform",
-            `translate(20,${margin.top + height / 2}) rotate(-90)`
-        )
-        .attr("text-anchor", "middle")
-        .text("ปริมาณสั่งซื้อ (ชิ้น)");
+    addAxisLabel(g, {
+        x: -height / 2,
+        y: -margin.left + 20,
+        text: "ปริมาณสั่งซื้อ (ชิ้น)",
+        rotate: -90
+    });
 
     const dots = plot.selectAll(".scatter-point")
         .data(sampleData)
@@ -1453,10 +1429,15 @@ function renderScatterChart() {
         .style("fill", "none")
         .style("pointer-events", "all");
 
-    /* Attach zoom to the plot group, not the whole SVG.
-       Events from dots bubble to this group, while the
-       transparent layer handles empty plot space. */
-    plot.call(zoom);
+    zoomLayer.call(zoom);
+
+    /*
+       Keep dots above zoom layer visually.
+       Pointer events still work on dots because the
+       zoom layer is inserted before the dots.
+    */
+
+    dots.raise();
 
     d3.select("#resetZoomBtn")
         .on("click", () => {
