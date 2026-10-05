@@ -1483,71 +1483,95 @@ function renderDonutChart() {
                LEGEND HOVER
             ================================================= */
 
-                        item.on(
-                "mouseleave",
-                function () {
+            item.on(
+                "mouseenter",
+                function (event) {
+
                     paths
-                        .filter(p =>
-                            p.data.Country === d.Country
+
+                        .filter(
+                            p =>
+                                p.data.Country ===
+                                d.Country
                         )
+
                         .interrupt()
+
                         .transition()
                         .duration(150)
-                        .attr("d", arc);
 
-                    hideTooltip();
+                        .attr(
+                            "d",
+                            hoverArc
+                        );
+
+
+                    const percent =
+                        totalValue > 0
+                            ? (
+                                d.Value /
+                                totalValue
+                            ) * 100
+                            : 0;
+
+
+                    showTooltip(
+
+                        event,
+
+                        `<b>${safeText(
+                            d.Country
+                        )}</b>
+
+                        <br>
+                        จำนวนรายการ:
+                        ${d3.format(",")(
+                            d.Count
+                        )}
+
+                        <br>
+                        มูลค่า:
+                        £${d3.format(",.2f")(
+                            d.Value
+                        )}
+
+                        <br>
+                        สัดส่วน:
+                        ${percent.toFixed(1)}%`
+                    );
                 }
             );
-
-            item.on(
-                "click",
-                function () {
-
-                    if (d.Country !== "Others") {
-
-                        selectedCountry = d.Country;
-
-                        d3.select("#countryFilter")
-                            .property(
-                                "value",
-                                selectedCountry
-                            );
-
-                        applyFilters();
-                    }
-                }
-            );
-
-        }
-    );
-}
 
 
             /* =================================================
                LEGEND LEAVE
             ================================================= */
 
-          item.on(
-    "mouseleave",
-    function () {
+            item.on(
+                "mouseleave",
+                function () {
 
-        paths
-            .filter(
-                p =>
-                    p.data.Country ===
-                    d.Country
-            )
-            .interrupt()
-            .transition()
-            .duration(150)
-            .attr(
-                "d",
-                arc
+                    paths
+
+                        .filter(
+                            p =>
+                                p.data.Country ===
+                                d.Country
+                        )
+
+                        .interrupt()
+
+                        .transition()
+                        .duration(150)
+
+                        .attr(
+                            "d",
+                            arc
+                        );
+
+                    hideTooltip();
+                }
             );
-
-        hideTooltip();
-    }
-);
 
 
             /* =================================================
