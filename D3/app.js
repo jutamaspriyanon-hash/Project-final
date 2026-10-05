@@ -1,4 +1,4 @@
-const DATA_URL = "Online_Retail_Cleaned_Final-1.csv";
+const DATA_URL = "Online_Retail_Cleaned_Final-1.csv.xlsb";
 
 let globalDataset = [];
 let filteredData = [];
