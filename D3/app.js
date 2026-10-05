@@ -1,678 +1,2682 @@
+/* =========================================================
+   ONLINE RETAIL ANALYTICS DASHBOARD
+   อ่านข้อมูลจาก Online_Retail_Cleaned_Final-1.xlsb โดยตรง
+   ========================================================= */
+
 const DATA_URL = "Online_Retail_Cleaned_Final-1.xlsb";
 
 let globalDataset = [];
 let filteredData = [];
 
-// Global State Filters
-let selectedCountry = 'ALL';
-let selectedType = 'ALL';
-let selectedYear = 'ALL';
-let selectedMonth = 'ALL';
-let localProductMetric = 'value';
+let selectedCountry = "ALL";
+let selectedType = "ALL";
+let selectedYear = "ALL";
+let selectedMonth = "ALL";
+
+let localProductMetric = "value";
 let localProductTop = 10;
 let localDonutTop = 5;
-let localScatterPrice = 'all';
+let localScatterPrice = "all";
 let localScatterQty = 0;
 
-// Fixed, deterministic country colors. A country keeps the same color across filters.
-const COUNTRY_COLOR_MAP = {};
-const COUNTRY_HUE_STEP = 137.508; // golden-angle spacing for distinct categorical colors
-function getCountryColor(country) {
-  if (!COUNTRY_COLOR_MAP[country]) {
-    const index = Object.keys(COUNTRY_COLOR_MAP).length;
-    const hue = (index * COUNTRY_HUE_STEP) % 360;
-    COUNTRY_COLOR_MAP[country] = `hsl(${hue.toFixed(1)}, 68%, 48%)`;
-  }
-  return COUNTRY_COLOR_MAP[country];
-}
 
-const TYPE_COLORS = {
-  'Sale': '#10b981',
-  'Return/Cancelled': '#ef4444'
-};
+/* =========================================================
+   START
+   ========================================================= */
 
-const BAR_COLORS = [
-  '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
-  '#ec4899', '#f43f5e', '#f97316', '#eab308', '#10b981'
-];
+document.addEventListener("DOMContentLoaded", function () {
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadData();
+    console.log("Dashboard started");
 
-  d3.select('#countryFilter').on('change', function() {
-    selectedCountry = this.value;
-    applyFilters();
-  });
+    setupEvents();
 
-  d3.select('#typeFilter').on('change', function() {
-    selectedType = this.value;
-    applyFilters();
-  });
+    loadXLSB();
 
-  d3.select('#yearFilter').on('change', function() {
-    selectedYear = this.value;
-    selectedMonth = 'ALL';
-    populateMonthDropdown();
-    d3.select('#monthFilter').property('value', 'ALL');
-    applyFilters();
-  });
-
-  d3.select('#monthFilter').on('change', function() {
-    selectedMonth = this.value;
-    applyFilters();
-  });
-
-  d3.select('#localProductMetric').on('change', function() { localProductMetric = this.value; renderBarChart(); });
-  d3.select('#localProductTop').on('change', function() { localProductTop = +this.value; renderBarChart(); });
-  d3.select('#localDonutTop').on('change', function() { localDonutTop = +this.value; renderDonutChart(); });
-  d3.select('#localScatterPrice').on('change', function() { localScatterPrice = this.value; renderScatterChart(); });
-  d3.select('#localScatterQty').on('change', function() { localScatterQty = +this.value; renderScatterChart(); });
-
-  d3.select('#resetBtn').on('click', resetDashboard);
-
-  window.addEventListener('resize', renderCharts);
 });
 
-async function loadData() {
-  try {
-    const response = await fetch(DATA_URL);
-    if (!response.ok) throw new Error(`ไม่สามารถโหลดไฟล์ได้ (${response.status})`);
 
-    const arrayBuffer = await response.arrayBuffer();
-    if (!arrayBuffer.byteLength) throw new Error("ไฟล์ XLSB ว่าง");
+/* =========================================================
+   EVENTS
+   ========================================================= */
 
-    const workbook = XLSX.read(arrayBuffer, {
-      type: "array",
-      cellDates: false
-    });
+function setupEvents() {
 
-    if (!workbook.SheetNames.length) {
-      throw new Error("ไม่พบ Sheet ในไฟล์ XLSB");
+    d3.select("#countryFilter")
+        .on("change", function () {
+
+            selectedCountry = this.value;
+
+            applyFilters();
+
+        });
+
+
+    d3.select("#typeFilter")
+        .on("change", function () {
+
+            selectedType = this.value;
+
+            applyFilters();
+
+        });
+
+
+    d3.select("#yearFilter")
+        .on("change", function () {
+
+            selectedYear = this.value;
+
+            selectedMonth = "ALL";
+
+            populateMonthDropdown();
+
+            applyFilters();
+
+        });
+
+
+    d3.select("#monthFilter")
+        .on("change", function () {
+
+            selectedMonth = this.value;
+
+            applyFilters();
+
+        });
+
+
+    d3.select("#localProductMetric")
+        .on("change", function () {
+
+            localProductMetric = this.value;
+
+            renderBarChart();
+
+        });
+
+
+    d3.select("#localProductTop")
+        .on("change", function () {
+
+            localProductTop = Number(this.value);
+
+            renderBarChart();
+
+        });
+
+
+    d3.select("#localDonutTop")
+        .on("change", function () {
+
+            localDonutTop = Number(this.value);
+
+            renderDonutChart();
+
+        });
+
+
+    d3.select("#localScatterPrice")
+        .on("change", function () {
+
+            localScatterPrice = this.value;
+
+            renderScatterChart();
+
+        });
+
+
+    d3.select("#localScatterQty")
+        .on("change", function () {
+
+            localScatterQty = Number(this.value);
+
+            renderScatterChart();
+
+        });
+
+
+    d3.select("#resetBtn")
+        .on("click", resetDashboard);
+
+
+    d3.select("#resetZoomBtn")
+        .on("click", function () {
+
+            renderScatterChart();
+
+        });
+
+}
+
+
+/* =========================================================
+   LOAD XLSB
+   ========================================================= */
+
+async function loadXLSB() {
+
+    try {
+
+        showLoadingMessage();
+
+        console.log(
+            "กำลังโหลด:",
+            DATA_URL
+        );
+
+
+        /* ตรวจสอบว่า SheetJS โหลดแล้ว */
+
+        if (typeof XLSX === "undefined") {
+
+            throw new Error(
+                "ไม่พบ SheetJS (XLSX)"
+            );
+
+        }
+
+
+        /* โหลดไฟล์ XLSB */
+
+        const response =
+            await fetch(
+                DATA_URL + "?v=" + Date.now()
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "โหลดไฟล์ไม่ได้: HTTP " +
+                response.status
+            );
+
+        }
+
+
+        const buffer =
+            await response.arrayBuffer();
+
+
+        console.log(
+            "ขนาดไฟล์:",
+            buffer.byteLength,
+            "bytes"
+        );
+
+
+        if (buffer.byteLength === 0) {
+
+            throw new Error(
+                "ไฟล์ XLSB ว่าง"
+            );
+
+        }
+
+
+        /* อ่าน XLSB */
+
+        const workbook =
+            XLSX.read(
+                buffer,
+                {
+                    type: "array",
+                    cellDates: true,
+                    dense: false
+                }
+            );
+
+
+        console.log(
+            "Sheets:",
+            workbook.SheetNames
+        );
+
+
+        if (
+            !workbook.SheetNames ||
+            workbook.SheetNames.length === 0
+        ) {
+
+            throw new Error(
+                "ไม่พบ Sheet ในไฟล์ XLSB"
+            );
+
+        }
+
+
+        /* ใช้ Sheet แรก */
+
+        const sheetName =
+            workbook.SheetNames[0];
+
+
+        const worksheet =
+            workbook.Sheets[sheetName];
+
+
+        console.log(
+            "กำลังอ่าน Sheet:",
+            sheetName
+        );
+
+
+        /* แปลง Sheet เป็น Object */
+
+        const rows =
+            XLSX.utils.sheet_to_json(
+                worksheet,
+                {
+                    defval: "",
+                    raw: true
+                }
+            );
+
+
+        console.log(
+            "จำนวนแถว:",
+            rows.length
+        );
+
+
+        if (!rows.length) {
+
+            throw new Error(
+                "Sheet ไม่มีข้อมูล"
+            );
+
+        }
+
+
+        console.log(
+            "คอลัมน์:",
+            Object.keys(rows[0])
+        );
+
+
+        /*
+         * แปลงข้อมูล
+         */
+
+        convertData(rows);
+
+
+    } catch (error) {
+
+        console.error(
+            "XLSB ERROR:",
+            error
+        );
+
+        showError(error);
+
     }
 
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
+}
 
-    const rows = XLSX.utils.sheet_to_json(worksheet, {
-      defval: ""
+
+/* =========================================================
+   CONVERT DATA
+   ========================================================= */
+
+function convertData(rows) {
+
+    globalDataset = [];
+
+
+    rows.forEach(function (row, index) {
+
+        try {
+
+            const description =
+                getValue(
+                    row,
+                    [
+                        "Description",
+                        "description",
+                        "DESCRIPTION"
+                    ]
+                );
+
+
+            const quantity =
+                toNumber(
+                    getValue(
+                        row,
+                        [
+                            "Quantity",
+                            "quantity",
+                            "QUANTITY"
+                        ]
+                    )
+                );
+
+
+            const unitPrice =
+                toNumber(
+                    getValue(
+                        row,
+                        [
+                            "UnitPrice",
+                            "Unit Price",
+                            "unitprice",
+                            "UNITPRICE"
+                        ]
+                    )
+                );
+
+
+            const customerID =
+                getValue(
+                    row,
+                    [
+                        "CustomerID",
+                        "Customer ID",
+                        "customerid",
+                        "CUSTOMERID"
+                    ]
+                );
+
+
+            const country =
+                getValue(
+                    row,
+                    [
+                        "Country",
+                        "country",
+                        "COUNTRY"
+                    ]
+                ) ||
+                "Unknown";
+
+
+            let transactionType =
+                getValue(
+                    row,
+                    [
+                        "TransactionType",
+                        "Transaction Type",
+                        "transactiontype",
+                        "TRANSACTIONTYPE"
+                    ]
+                );
+
+
+            let lineAmount =
+                toNumber(
+                    getValue(
+                        row,
+                        [
+                            "LineAmount",
+                            "Line Amount",
+                            "lineamount",
+                            "LINEAMOUNT"
+                        ]
+                    )
+                );
+
+
+            /*
+             * ถ้าไม่มี LineAmount
+             * คำนวณ Quantity × UnitPrice
+             */
+
+            if (
+                !Number.isFinite(lineAmount)
+            ) {
+
+                lineAmount =
+                    quantity * unitPrice;
+
+            }
+
+
+            /*
+             * ถ้าไม่มี TransactionType
+             * ใช้ Quantity เป็นตัวตัดสิน
+             */
+
+            if (!transactionType) {
+
+                if (quantity < 0) {
+
+                    transactionType =
+                        "Return/Cancelled";
+
+                } else {
+
+                    transactionType =
+                        "Sale";
+
+                }
+
+            }
+
+
+            /*
+             * ทำให้ประเภทเป็นมาตรฐาน
+             */
+
+            transactionType =
+                normalizeTransactionType(
+                    transactionType,
+                    quantity
+                );
+
+
+            /*
+             * วันที่
+             */
+
+            const rawDate =
+                getValue(
+                    row,
+                    [
+                        "InvoiceDate",
+                        "Invoice Date",
+                        "invoicedate",
+                        "INVOICEDATE"
+                    ]
+                );
+
+
+            const date =
+                parseExcelDate(
+                    rawDate
+                );
+
+
+            /*
+             * ปี / เดือน
+             */
+
+            let year = null;
+            let month = null;
+
+
+            if (date) {
+
+                year =
+                    date.getFullYear();
+
+                month =
+                    date.getMonth() + 1;
+
+            }
+
+
+            /*
+             * เก็บข้อมูล
+             */
+
+            globalDataset.push({
+
+                Description:
+                    String(
+                        description ||
+                        "Unknown Product"
+                    ),
+
+                Quantity:
+                    quantity,
+
+                UnitPrice:
+                    unitPrice,
+
+                CustomerID:
+                    customerID,
+
+                Country:
+                    String(country),
+
+                TransactionType:
+                    transactionType,
+
+                LineAmount:
+                    lineAmount,
+
+                InvoiceDate:
+                    rawDate,
+
+                Date:
+                    date,
+
+                Year:
+                    year,
+
+                Month:
+                    month
+
+            });
+
+        } catch (error) {
+
+            console.warn(
+                "ข้ามแถว:",
+                index,
+                error
+            );
+
+        }
+
     });
 
-    if (!rows.length) {
-      throw new Error("ไม่พบข้อมูลใน Sheet แรกของไฟล์ XLSB");
+
+    console.log(
+        "ข้อมูลหลังแปลง:",
+        globalDataset.length
+    );
+
+
+    if (!globalDataset.length) {
+
+        throw new Error(
+            "ไม่สามารถแปลงข้อมูลจาก XLSB ได้"
+        );
+
     }
 
-    const loadRows = rows => {
-      globalDataset = rows.map(d => {
-        const date = parseInvoiceDate(d.InvoiceDate);
-        return {
-          Description: d.Description || 'Uncategorized',
-          Quantity: +d.Quantity || 0,
-          UnitPrice: +d.UnitPrice || 0,
-          CustomerID: d.CustomerID || '',
-          Country: d.Country || 'Unknown',
-          TransactionType: d.TransactionType || 'Sale',
-          LineAmount: Number.isFinite(+d.LineAmount)
-            ? +d.LineAmount
-            : ((+d.Quantity || 0) * (+d.UnitPrice || 0)),
-          InvoiceDate: d.InvoiceDate || '',
-          Date: date,
-          Year: date?.getFullYear() ?? null,
-          Month: date ? date.getMonth() + 1 : null
-        };
-      }).filter(d =>
-        d.Date instanceof Date &&
-        !Number.isNaN(d.Date.getTime())
-      );
 
-      filteredData = [...globalDataset];
-      populateCountryDropdown();
-      populateYearDropdown();
-      populateMonthDropdown();
-      updateDashboard();
+    /*
+     * เริ่มต้นด้วยข้อมูลทั้งหมด
+     */
 
-      console.log(`โหลดข้อมูลสำเร็จ ${globalDataset.length.toLocaleString()} รายการ`);
-    };
+    filteredData =
+        [...globalDataset];
 
-    console.log("Sheet:", sheetName);
-    console.log("Columns:", Object.keys(rows[0]));
-    loadRows(rows);
 
-  } catch (err) {
-    console.error("โหลด XLSB ไม่สำเร็จ:", err);
-    showDataLoadError(err);
-  }
+    /*
+     * สร้าง Filter
+     */
+
+    populateCountryDropdown();
+
+    populateYearDropdown();
+
+    populateMonthDropdown();
+
+
+    /*
+     * แสดง Dashboard
+     */
+
+    updateDashboard();
+
+
+    hideLoadingMessage();
+
+
+    console.log(
+        "โหลดข้อมูลสำเร็จ:",
+        globalDataset.length
+    );
+
 }
 
-function parseInvoiceDate(value) {
-  if (value === null || value === undefined || value === '') return null;
 
-  // Excel serial date used by XLSB when cellDates:false.
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return new Date(Date.UTC(1899, 11, 30) + value * 86400000);
-  }
+/* =========================================================
+   GET VALUE
+   ========================================================= */
 
-  if (value instanceof Date) return value;
+function getValue(row, names) {
 
-  const raw = String(value).trim();
+    for (const name of names) {
 
-  const formats = [
-    "%m/%d/%Y %I:%M:%S %p",
-    "%m/%d/%Y %I:%M %p",
-    "%m/%d/%Y %H:%M:%S",
-    "%m/%d/%Y %H:%M",
-    "%Y-%m-%d %H:%M:%S",
-    "%Y-%m-%d %H:%M"
-  ];
+        if (
+            Object.prototype.hasOwnProperty.call(
+                row,
+                name
+            )
+        ) {
 
-  for (const format of formats) {
-    const date = d3.timeParse(format)(raw);
-    if (date) return date;
-  }
+            return row[name];
 
-  const nativeDate = new Date(raw);
-  return Number.isNaN(nativeDate.getTime()) ? null : nativeDate;
+        }
+
+    }
+
+
+    /*
+     * ตรวจสอบแบบไม่สนใจตัวพิมพ์
+     */
+
+    const keys =
+        Object.keys(row);
+
+
+    for (const name of names) {
+
+        const found =
+            keys.find(
+                key =>
+                    key.toLowerCase() ===
+                    name.toLowerCase()
+            );
+
+
+        if (found) {
+
+            return row[found];
+
+        }
+
+    }
+
+
+    return "";
+
 }
 
-function populateYearDropdown() {
-  const years = Array.from(new Set(globalDataset.map(d => d.Year).filter(Boolean))).sort((a,b) => a-b);
-  const select = d3.select('#yearFilter');
-  select.selectAll('option:not(:first-child)').remove();
-  years.forEach(y => select.append('option').attr('value', y).text(y));
+
+/* =========================================================
+   NUMBER
+   ========================================================= */
+
+function toNumber(value) {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ""
+    ) {
+
+        return NaN;
+
+    }
+
+
+    if (
+        typeof value === "number"
+    ) {
+
+        return value;
+
+    }
+
+
+    const cleaned =
+        String(value)
+            .replace(/,/g, "")
+            .replace(/£/g, "")
+            .trim();
+
+
+    const number =
+        Number(cleaned);
+
+
+    return number;
+
 }
 
-function populateMonthDropdown() {
-  const availableMonths = Array.from(new Set(
-    globalDataset
-      .filter(d => selectedYear === 'ALL' || String(d.Year) === String(selectedYear))
-      .map(d => d.Month)
-      .filter(Boolean)
-  )).sort((a,b) => a-b);
 
-  const select = d3.select('#monthFilter');
-  select.selectAll('option:not(:first-child)').remove();
-  availableMonths.forEach(m => {
-    select.append('option').attr('value', m).text(`${String(m).padStart(2,'0')} - ${MONTH_NAMES_TH[m - 1]}`);
-  });
+/* =========================================================
+   TRANSACTION TYPE
+   ========================================================= */
 
-  if (selectedMonth !== 'ALL' && !availableMonths.includes(+selectedMonth)) {
-    selectedMonth = 'ALL';
-  }
-  select.property('value', selectedMonth);
+function normalizeTransactionType(
+    value,
+    quantity
+) {
+
+    const text =
+        String(value)
+            .toLowerCase()
+            .trim();
+
+
+    if (
+        text.includes("return") ||
+        text.includes("cancel") ||
+        text.includes("refund")
+    ) {
+
+        return "Return/Cancelled";
+
+    }
+
+
+    if (
+        text === "sale" ||
+        text === "ขาย"
+    ) {
+
+        return "Sale";
+
+    }
+
+
+    /*
+     * ถ้าไม่รู้ประเภท
+     * ใช้ Quantity
+     */
+
+    if (
+        Number(quantity) < 0
+    ) {
+
+        return "Return/Cancelled";
+
+    }
+
+
+    return "Sale";
+
 }
+
+
+/* =========================================================
+   EXCEL DATE
+   ========================================================= */
+
+function parseExcelDate(value) {
+
+    if (
+        value === null ||
+        value === undefined ||
+        value === ""
+    ) {
+
+        return null;
+
+    }
+
+
+    /*
+     * Date object
+     */
+
+    if (
+        value instanceof Date
+    ) {
+
+        if (
+            !Number.isNaN(
+                value.getTime()
+            )
+        ) {
+
+            return value;
+
+        }
+
+        return null;
+
+    }
+
+
+    /*
+     * Excel Serial Date
+     *
+     * Excel ใช้วันที่เริ่มจาก
+     * 1899-12-30
+     */
+
+    if (
+        typeof value === "number"
+    ) {
+
+        const excelEpoch =
+            new Date(
+                Date.UTC(
+                    1899,
+                    11,
+                    30
+                )
+            );
+
+
+        const date =
+            new Date(
+                excelEpoch.getTime() +
+                value *
+                86400000
+            );
+
+
+        if (
+            !Number.isNaN(
+                date.getTime()
+            )
+        ) {
+
+            return date;
+
+        }
+
+    }
+
+
+    const text =
+        String(value)
+            .trim();
+
+
+    /*
+     * ลอง Date.parse
+     */
+
+    const nativeDate =
+        new Date(text);
+
+
+    if (
+        !Number.isNaN(
+            nativeDate.getTime()
+        )
+    ) {
+
+        return nativeDate;
+
+    }
+
+
+    /*
+     * รูปแบบ dd/mm/yyyy
+     */
+
+    let match =
+        text.match(
+            /^(\d{1,2})\/(\d{1,2})\/(\d{4})/
+        );
+
+
+    if (match) {
+
+        const day =
+            Number(match[1]);
+
+        const month =
+            Number(match[2]) - 1;
+
+        const year =
+            Number(match[3]);
+
+
+        const date =
+            new Date(
+                year,
+                month,
+                day
+            );
+
+
+        if (
+            !Number.isNaN(
+                date.getTime()
+            )
+        ) {
+
+            return date;
+
+        }
+
+    }
+
+
+    return null;
+
+}
+
+
+/* =========================================================
+   COUNTRY FILTER
+   ========================================================= */
 
 function populateCountryDropdown() {
-  const countries = Array.from(new Set(globalDataset.map(d => d.Country))).sort();
-  const select = d3.select('#countryFilter');
-  countries.forEach(c => select.append('option').attr('value', c).text(c));
+
+    const countries =
+        Array.from(
+            new Set(
+                globalDataset
+                    .map(
+                        d => d.Country
+                    )
+                    .filter(Boolean)
+            )
+        )
+        .sort();
+
+
+    const select =
+        d3.select(
+            "#countryFilter"
+        );
+
+
+    select
+        .selectAll(
+            "option:not(:first-child)"
+        )
+        .remove();
+
+
+    countries.forEach(
+        country => {
+
+            select
+                .append("option")
+                .attr(
+                    "value",
+                    country
+                )
+                .text(
+                    country
+                );
+
+        }
+    );
+
+
+    /*
+     * อัปเดตจำนวนประเทศ
+     */
+
+    const label =
+        select
+            .node()
+            ?.parentElement
+            ?.querySelector("label");
+
+
+    if (label) {
+
+        label.innerHTML =
+            `<i class="fa-solid fa-globe"></i>
+             ประเทศทั้งหมด (${countries.length} ประเทศ):`;
+
+    }
+
 }
+
+
+/* =========================================================
+   YEAR FILTER
+   ========================================================= */
+
+function populateYearDropdown() {
+
+    const years =
+        Array.from(
+            new Set(
+                globalDataset
+                    .map(
+                        d => d.Year
+                    )
+                    .filter(
+                        d =>
+                            d !== null &&
+                            d !== undefined
+                    )
+            )
+        )
+        .sort(
+            (a, b) =>
+                a - b
+        );
+
+
+    const select =
+        d3.select(
+            "#yearFilter"
+        );
+
+
+    select
+        .selectAll(
+            "option:not(:first-child)"
+        )
+        .remove();
+
+
+    years.forEach(
+        year => {
+
+            select
+                .append("option")
+                .attr(
+                    "value",
+                    year
+                )
+                .text(
+                    year
+                );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   MONTH FILTER
+   ========================================================= */
+
+function populateMonthDropdown() {
+
+    const months = [
+
+        "มกราคม",
+        "กุมภาพันธ์",
+        "มีนาคม",
+        "เมษายน",
+        "พฤษภาคม",
+        "มิถุนายน",
+        "กรกฎาคม",
+        "สิงหาคม",
+        "กันยายน",
+        "ตุลาคม",
+        "พฤศจิกายน",
+        "ธันวาคม"
+
+    ];
+
+
+    let data =
+        globalDataset;
+
+
+    if (
+        selectedYear !== "ALL"
+    ) {
+
+        data =
+            data.filter(
+                d =>
+                    String(d.Year) ===
+                    String(selectedYear)
+            );
+
+    }
+
+
+    const monthNumbers =
+        Array.from(
+            new Set(
+                data
+                    .map(
+                        d => d.Month
+                    )
+                    .filter(Boolean)
+            )
+        )
+        .sort(
+            (a, b) =>
+                a - b
+        );
+
+
+    const select =
+        d3.select(
+            "#monthFilter"
+        );
+
+
+    select
+        .selectAll(
+            "option:not(:first-child)"
+        )
+        .remove();
+
+
+    monthNumbers.forEach(
+        month => {
+
+            select
+                .append("option")
+                .attr(
+                    "value",
+                    month
+                )
+                .text(
+                    String(month)
+                    .padStart(2, "0") +
+                    " - " +
+                    months[month - 1]
+                );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   FILTER DATA
+   ========================================================= */
 
 function applyFilters() {
-  filteredData = globalDataset.filter(d => {
-    const matchCountry = selectedCountry === 'ALL' || d.Country === selectedCountry;
-    const matchType = selectedType === 'ALL' || d.TransactionType === selectedType;
-    const matchYear = selectedYear === 'ALL' || String(d.Year) === String(selectedYear);
-    const matchMonth = selectedMonth === 'ALL' || String(d.Month) === String(selectedMonth);
-    return matchCountry && matchType && matchYear && matchMonth;
-  });
-  updateDashboard();
+
+    filteredData =
+        globalDataset.filter(
+            d => {
+
+                const countryOK =
+                    selectedCountry === "ALL" ||
+                    d.Country ===
+                    selectedCountry;
+
+
+                const typeOK =
+                    selectedType === "ALL" ||
+                    d.TransactionType ===
+                    selectedType;
+
+
+                const yearOK =
+                    selectedYear === "ALL" ||
+                    String(d.Year) ===
+                    String(selectedYear);
+
+
+                const monthOK =
+                    selectedMonth === "ALL" ||
+                    String(d.Month) ===
+                    String(selectedMonth);
+
+
+                return (
+                    countryOK &&
+                    typeOK &&
+                    yearOK &&
+                    monthOK
+                );
+
+            }
+        );
+
+
+    updateDashboard();
+
 }
+
+
+/* =========================================================
+   RESET
+   ========================================================= */
 
 function resetDashboard() {
-  selectedCountry = 'ALL';
-  selectedType = 'ALL';
-  selectedYear = 'ALL';
-  selectedMonth = 'ALL';
-  localProductMetric = 'value';
-  localProductTop = 10;
-  localDonutTop = 5;
-  localScatterPrice = 'all';
-  localScatterQty = 0;
 
-  d3.select('#localProductMetric').property('value', 'value');
-  d3.select('#localProductTop').property('value', '10');
-  d3.select('#localDonutTop').property('value', '5');
-  d3.select('#localScatterPrice').property('value', 'all');
-  d3.select('#localScatterQty').property('value', '0');
-  d3.select('#countryFilter').property('value', 'ALL');
-  d3.select('#typeFilter').property('value', 'ALL');
-  d3.select('#yearFilter').property('value', 'ALL');
-  populateMonthDropdown();
-  d3.select('#monthFilter').property('value', 'ALL');
+    selectedCountry = "ALL";
+    selectedType = "ALL";
+    selectedYear = "ALL";
+    selectedMonth = "ALL";
 
-  filteredData = [...globalDataset];
-  updateDashboard();
+
+    localProductMetric = "value";
+    localProductTop = 10;
+    localDonutTop = 5;
+    localScatterPrice = "all";
+    localScatterQty = 0;
+
+
+    d3.select(
+        "#countryFilter"
+    ).property(
+        "value",
+        "ALL"
+    );
+
+
+    d3.select(
+        "#typeFilter"
+    ).property(
+        "value",
+        "ALL"
+    );
+
+
+    d3.select(
+        "#yearFilter"
+    ).property(
+        "value",
+        "ALL"
+    );
+
+
+    d3.select(
+        "#localProductMetric"
+    ).property(
+        "value",
+        "value"
+    );
+
+
+    d3.select(
+        "#localProductTop"
+    ).property(
+        "value",
+        "10"
+    );
+
+
+    d3.select(
+        "#localDonutTop"
+    ).property(
+        "value",
+        "5"
+    );
+
+
+    d3.select(
+        "#localScatterPrice"
+    ).property(
+        "value",
+        "all"
+    );
+
+
+    d3.select(
+        "#localScatterQty"
+    ).property(
+        "value",
+        "0"
+    );
+
+
+    populateMonthDropdown();
+
+
+    d3.select(
+        "#monthFilter"
+    ).property(
+        "value",
+        "ALL"
+    );
+
+
+    filteredData =
+        [...globalDataset];
+
+
+    updateDashboard();
+
 }
+
+
+/* =========================================================
+   UPDATE DASHBOARD
+   ========================================================= */
 
 function updateDashboard() {
-  renderKPIs();
-  renderCharts();
+
+    renderKPIs();
+
+    renderBarChart();
+
+    renderDonutChart();
+
+    renderColumnChart();
+
+    renderScatterChart();
+
 }
+
+
+/* =========================================================
+   KPI
+   ========================================================= */
 
 function renderKPIs() {
-  const totalSales = d3.sum(filteredData, d => d.LineAmount);
-  const totalQty = d3.sum(filteredData, d => d.Quantity);
-  const totalOrders = filteredData.length;
-  const uniqueCountries = new Set(filteredData.map(d => d.Country)).size;
 
-  d3.select('#kpiTotalSales').text(`£${d3.format(",.2f")(totalSales)}`);
-  d3.select('#kpiTotalQty').text(`${d3.format(",")(totalQty)} ชิ้น`);
-  d3.select('#kpiTotalOrders').text(`${d3.format(",")(totalOrders)} รายการ`);
-  d3.select('#kpiTotalCountries').text(`${uniqueCountries} ประเทศ`);
+    const totalSales =
+        d3.sum(
+            filteredData,
+            d =>
+                Number(d.LineAmount) ||
+                0
+        );
+
+
+    const totalQty =
+        d3.sum(
+            filteredData,
+            d =>
+                Number(d.Quantity) ||
+                0
+        );
+
+
+    const totalOrders =
+        filteredData.length;
+
+
+    const countries =
+        new Set(
+            filteredData.map(
+                d => d.Country
+            )
+        );
+
+
+    d3.select(
+        "#kpiTotalSales"
+    ).text(
+        "£" +
+        d3.format(",.2f")(
+            totalSales
+        )
+    );
+
+
+    d3.select(
+        "#kpiTotalQty"
+    ).text(
+        d3.format(",")(
+            totalQty
+        ) +
+        " ชิ้น"
+    );
+
+
+    d3.select(
+        "#kpiTotalOrders"
+    ).text(
+        d3.format(",")(
+            totalOrders
+        ) +
+        " รายการ"
+    );
+
+
+    d3.select(
+        "#kpiTotalCountries"
+    ).text(
+        countries.size +
+        " ประเทศ"
+    );
+
 }
 
-function renderCharts() {
-  renderBarChart();
-  renderDonutChart();
-  renderColumnChart();
-  renderScatterChart();
+
+/* =========================================================
+   TOOLTIP
+   ========================================================= */
+
+function showTooltip(
+    event,
+    html
+) {
+
+    const tooltip =
+        d3.select(
+            "#tooltip"
+        );
+
+
+    tooltip
+        .html(html)
+        .style(
+            "opacity",
+            1
+        )
+        .style(
+            "left",
+            (event.pageX + 15) +
+            "px"
+        )
+        .style(
+            "top",
+            (event.pageY - 30) +
+            "px"
+        );
+
 }
 
-const tooltip = d3.select("#tooltip");
-
-function showTooltip(event, content) {
-  tooltip.html(content)
-    .style("opacity", 1)
-    .style("left", (event.pageX + 15) + "px")
-    .style("top", (event.pageY - 28) + "px");
-}
 
 function hideTooltip() {
-  tooltip.style("opacity", 0);
+
+    d3.select(
+        "#tooltip"
+    )
+    .style(
+        "opacity",
+        0
+    );
+
 }
 
-// 1. Bar Chart (แก้อาการสีซ้อนด้วย container.html(""))
+
+/* =========================================================
+   BAR CHART
+   ========================================================= */
+
 function renderBarChart() {
-  const container = d3.select("#barChart");
-  container.html(""); // ล้าง Element เก่าทั้งหมด
 
-  const bounds = container.node().getBoundingClientRect();
-  const margin = { top: 12, right: 30, bottom: 48, left: 190 };
-  const width = bounds.width - margin.left - margin.right;
-  const height = bounds.height - margin.top - margin.bottom;
+    const container =
+        d3.select(
+            "#barChart"
+        );
 
-  // กราฟนี้ใช้ตัวกรองหลักทั้งหมด แล้วมีตัวกรองเฉพาะกราฟเป็น 'ตัวชี้วัด' และจำนวนอันดับ
-  const dataset = filteredData;
 
-  const productData = Array.from(
-    d3.rollup(dataset, v => ({
-      Sales: d3.sum(v, d => d.LineAmount),
-      Qty: d3.sum(v, d => d.Quantity)
-    }), d => d.Description),
-    ([Description, stats]) => ({
-      ShortDesc: Description.length > 22 ? Description.substring(0, 20) + '...' : Description,
-      FullDesc: Description,
-      ...stats
-    })
-  ).sort((a, b) => localProductMetric === 'qty' ? b.Qty - a.Qty : b.Sales - a.Sales).slice(0, localProductTop);
+    if (container.empty()) {
+        return;
+    }
 
-  // Prevent bars from sharing the same y-position when long product names
-  // have identical first 20 characters.
-  const labelCounts = new Map();
-  productData.forEach(d => {
-    const base = d.ShortDesc;
-    const count = (labelCounts.get(base) || 0) + 1;
-    labelCounts.set(base, count);
-    if (count > 1) d.ShortDesc = `${base} #${count}`;
-  });
 
-  const svg = container.append("svg")
-    .attr("width", bounds.width)
-    .attr("height", bounds.height)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+    container.html("");
 
-  const y = d3.scaleBand().range([0, height]).domain(productData.map(d => d.ShortDesc)).padding(0.25);
-  const metricMax = d3.max(productData, d => localProductMetric === 'qty' ? d.Qty : d.Sales) || 100;
-  const x = d3.scaleLinear().domain([0, metricMax * 1.1]).range([0, width]);
 
-  svg.append("g").call(d3.axisLeft(y));
-  svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).ticks(5).tickFormat(d => localProductMetric === 'qty' ? d3.format(',')(d) : `£${d/1000}k`));
+    const element =
+        container.node();
 
-  // Axes Labels
-  svg.append("text")
-    .attr("class", "axis-label")
-    .attr("x", width / 2)
-    .attr("y", height + 38)
-    .attr("text-anchor", "middle")
-    .text(localProductMetric === 'qty' ? 'จำนวนชิ้น' : 'มูลค่ารายการ (£)');
 
-  svg.append("text")
-    .attr("class", "axis-label")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2)
-    .attr("y", -160)
-    .attr("text-anchor", "middle")
-    .text("รายชื่อสินค้า (Top 10)");
+    const width =
+        element.clientWidth ||
+        600;
 
-  svg.selectAll(".bar-rect")
-    .data(productData)
-    .enter()
-    .append("rect")
-    .attr("class", "bar-rect")
-    .attr("y", d => y(d.ShortDesc))
-    .attr("height", y.bandwidth())
-    .attr("fill", (d, i) => BAR_COLORS[i % BAR_COLORS.length])
-    .attr("rx", 4)
-    .attr("x", 0)
-    .attr("width", 0)
-    .transition().duration(700).delay((d,i) => i * 45).ease(d3.easeCubicOut)
-    .attr("width", d => x(localProductMetric === 'qty' ? d.Qty : d.Sales))
-    .selection()
-    .on("mouseover", (e, d) => showTooltip(e, `<b>${d.FullDesc}</b><br/>ยอดขาย: £${d3.format(",.2f")(d.Sales)}<br/>จำนวน: ${d3.format(",")(d.Qty)} ชิ้น`))
-    .on("mouseout", hideTooltip);
+
+    const height =
+        element.clientHeight ||
+        350;
+
+
+    const margin = {
+
+        top: 20,
+        right: 30,
+        bottom: 50,
+        left: 190
+
+    };
+
+
+    const innerWidth =
+        Math.max(
+            100,
+            width -
+            margin.left -
+            margin.right
+        );
+
+
+    const innerHeight =
+        Math.max(
+            100,
+            height -
+            margin.top -
+            margin.bottom
+        );
+
+
+    const grouped =
+        d3.rollup(
+
+            filteredData,
+
+            values => ({
+
+                value:
+                    d3.sum(
+                        values,
+                        d =>
+                            Number(
+                                d.LineAmount
+                            ) || 0
+                    ),
+
+                qty:
+                    d3.sum(
+                        values,
+                        d =>
+                            Number(
+                                d.Quantity
+                            ) || 0
+                    )
+
+            }),
+
+            d => d.Description
+
+        );
+
+
+    const data =
+        Array.from(
+            grouped,
+            ([Description, value]) => ({
+
+                Description,
+                ...value
+
+            })
+        )
+        .sort(
+            (a, b) => {
+
+                const av =
+                    localProductMetric === "qty"
+                        ? a.qty
+                        : a.value;
+
+                const bv =
+                    localProductMetric === "qty"
+                        ? b.qty
+                        : b.value;
+
+                return bv - av;
+
+            }
+        )
+        .slice(
+            0,
+            localProductTop
+        );
+
+
+    if (!data.length) {
+
+        showChartEmpty(
+            container
+        );
+
+        return;
+
+    }
+
+
+    const svg =
+        container
+            .append("svg")
+            .attr(
+                "width",
+                width
+            )
+            .attr(
+                "height",
+                height
+            )
+            .append("g")
+            .attr(
+                "transform",
+                `translate(${margin.left},${margin.top})`
+            );
+
+
+    const y =
+        d3.scaleBand()
+            .domain(
+                data.map(
+                    d => d.Description
+                )
+            )
+            .range(
+                [
+                    0,
+                    innerHeight
+                ]
+            )
+            .padding(0.25);
+
+
+    const maxValue =
+        d3.max(
+            data,
+            d =>
+                localProductMetric === "qty"
+                    ? d.qty
+                    : d.value
+        ) || 1;
+
+
+    const x =
+        d3.scaleLinear()
+            .domain(
+                [
+                    0,
+                    maxValue * 1.1
+                ]
+            )
+            .range(
+                [
+                    0,
+                    innerWidth
+                ]
+            );
+
+
+    svg
+        .append("g")
+        .call(
+            d3.axisLeft(y)
+        );
+
+
+    svg
+        .append("g")
+        .attr(
+            "transform",
+            `translate(0,${innerHeight})`
+        )
+        .call(
+            d3.axisBottom(x)
+        );
+
+
+    svg
+        .selectAll(".bar")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr(
+            "class",
+            "bar"
+        )
+        .attr(
+            "x",
+            0
+        )
+        .attr(
+            "y",
+            d =>
+                y(d.Description)
+        )
+        .attr(
+            "height",
+            y.bandwidth()
+        )
+        .attr(
+            "width",
+            d =>
+                x(
+                    localProductMetric === "qty"
+                        ? d.qty
+                        : d.value
+                )
+        )
+        .attr(
+            "fill",
+            "#8b5cf6"
+        )
+        .attr(
+            "rx",
+            5
+        )
+        .on(
+            "mousemove",
+            function (event, d) {
+
+                showTooltip(
+
+                    event,
+
+                    `<b>${d.Description}</b>
+                    <br>มูลค่า: £${d3.format(",.2f")(d.value)}
+                    <br>จำนวน: ${d3.format(",")(d.qty)} ชิ้น>`
+
+                );
+
+            }
+        )
+        .on(
+            "mouseout",
+            hideTooltip
+        );
+
 }
 
-// 2. Donut Chart — Country Share
+
+/* =========================================================
+   DONUT CHART
+   ========================================================= */
+
 function renderDonutChart() {
-  const container = d3.select("#donutChart");
-  container.html("");
 
-  const bounds = container.node().getBoundingClientRect();
-  const width = bounds.width;
-  const height = bounds.height;
-  const donutWidth = Math.min(width * 0.62, 430);
-  const radius = Math.min(donutWidth * 0.38, height * 0.40);
+    const container =
+        d3.select(
+            "#donutChart"
+        );
 
-  const donutDataset = filteredData;
-  const totalValue = d3.sum(donutDataset, d => d.LineAmount);
 
-  const countryRollup = Array.from(
-    d3.rollup(donutDataset, v => ({
-      Value: d3.sum(v, d => d.LineAmount),
-      Count: v.length
-    }), d => d.Country),
-    ([Country, stats]) => ({ Country, ...stats })
-  ).sort((a, b) => b.Value - a.Value);
+    if (container.empty()) {
+        return;
+    }
 
-  // Register colors before slicing so every country keeps the same color.
-  countryRollup.forEach(d => getCountryColor(d.Country));
 
-  let countryData = countryRollup.slice(0, localDonutTop);
-  const others = countryRollup.slice(localDonutTop);
-  const othersValue = d3.sum(others, d => d.Value);
-  const othersCount = d3.sum(others, d => d.Count);
-  if (others.length && othersValue > 0) {
-    countryData.push({ Country: 'Others', Value: othersValue, Count: othersCount });
-  }
+    container.html("");
 
-  // SVG is reserved for the donut itself. The legend is a real HTML panel
-  // so a long country list can scroll instead of overflowing the card.
-  const svg = container.append("svg")
-    .attr("width", donutWidth)
-    .attr("height", height)
-    .attr("viewBox", `0 0 ${donutWidth} ${height}`)
-    .style("display", "block");
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${donutWidth * 0.50},${height / 2})`);
+    const width =
+        container.node().clientWidth ||
+        600;
 
-  const pie = d3.pie().value(d => Math.max(0, d.Value)).sort(null);
-  const arc = d3.arc().innerRadius(radius * 0.58).outerRadius(radius);
-  const hoverArc = d3.arc().innerRadius(radius * 0.55).outerRadius(radius * 1.05);
 
-  const paths = g.selectAll(".country-slice")
-    .data(pie(countryData))
-    .enter()
-    .append("path")
-    .attr("class", "country-slice")
-    .attr("fill", d => d.data.Country === 'Others' ? '#CBD5E1' : getCountryColor(d.data.Country))
-    .style("cursor", d => d.data.Country === 'Others' ? 'default' : 'pointer')
-    .each(function(d) { this._current = { startAngle: d.startAngle, endAngle: d.startAngle }; })
-    .transition()
-    .duration(800)
-    .delay((d, i) => i * 55)
-    .ease(d3.easeCubicOut)
-    .attrTween("d", function(d) {
-      const i = d3.interpolate(this._current, d);
-      this._current = i(1);
-      return t => arc(i(t));
-    });
+    const height =
+        container.node().clientHeight ||
+        350;
 
-  paths.selection()
-    .on("mouseover", function(event, d) {
-      const pct = totalValue !== 0 ? Math.abs(d.data.Value / totalValue * 100) : 0;
-      d3.select(this).transition().duration(180).attr("d", hoverArc(d));
-      showTooltip(event, `<b>${d.data.Country}</b><br/>จำนวนรายการ: ${d3.format(",")(d.data.Count)}<br/>มูลค่า: £${d3.format(",.2f")(d.data.Value)}<br/>สัดส่วน: ${pct.toFixed(1)}%`);
-    })
-    .on("mouseout", function(event, d) {
-      d3.select(this).transition().duration(180).attr("d", arc(d));
-      hideTooltip();
-    })
-    .on("click", (event, d) => {
-      if (d.data.Country !== 'Others') {
-        selectedCountry = d.data.Country;
-        d3.select('#countryFilter').property('value', selectedCountry);
-        applyFilters();
-      }
-    });
 
-  // Center summary
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("dy", "-0.15em")
-    .style("font-size", "0.78rem")
-    .style("fill", "#64748b")
-    .text("มูลค่ารวม");
+    const grouped =
+        d3.rollup(
 
-  g.append("text")
-    .attr("text-anchor", "middle")
-    .attr("dy", "1.15em")
-    .style("font-size", "1.05rem")
-    .style("font-weight", "700")
-    .style("fill", "#0f172a")
-    .text(`£${d3.format(",.0f")(totalValue)}`);
+            filteredData,
 
-  // Country legend — HTML grid with its own scroll, never allowed to
-  // escape the chart card. Each country keeps its stable color.
-  const legend = container.append("div")
-    .attr("class", "country-legend-panel");
+            values =>
+                d3.sum(
+                    values,
+                    d =>
+                        Number(
+                            d.LineAmount
+                        ) || 0
+                ),
 
-  countryData.forEach((d) => {
-    const item = legend.append("div")
-      .attr("class", "country-legend-item")
-      .style("cursor", d.Country === 'Others' ? 'default' : 'pointer');
+            d => d.Country
 
-    item.append("span")
-      .attr("class", "country-legend-dot")
-      .style("background", d.Country === 'Others' ? '#CBD5E1' : getCountryColor(d.Country));
+        );
 
-    item.append("span")
-      .attr("class", "country-legend-name")
-      .text(d.Country);
 
-    item.on("mouseenter", function(event) {
-      paths.filter(p => p.data.Country === d.Country)
-        .transition().duration(150).attr("d", hoverArc);
+    let data =
+        Array.from(
+            grouped,
+            ([Country, value]) => ({
+                Country,
+                value
+            })
+        )
+        .sort(
+            (a, b) =>
+                b.value - a.value
+        );
 
-      const pct = totalValue !== 0 ? Math.abs(d.Value / totalValue * 100) : 0;
-      showTooltip(event, `<b>${d.Country}</b><br/>จำนวนรายการ: ${d3.format(",")(d.Count)}<br/>มูลค่า: £${d3.format(",.2f")(d.Value)}<br/>สัดส่วน: ${pct.toFixed(1)}%`);
-    }).on("mouseleave", function() {
-      paths.filter(p => p.data.Country === d.Country)
-        .transition().duration(150).attr("d", arc);
-      hideTooltip();
-    }).on("click", function() {
-      if (d.Country !== 'Others') {
-        selectedCountry = d.Country;
-        d3.select('#countryFilter').property('value', selectedCountry);
-        applyFilters();
-      }
-    });
-  });
+
+    if (!data.length) {
+
+        showChartEmpty(
+            container
+        );
+
+        return;
+
+    }
+
+
+    if (
+        localDonutTop !== 999
+    ) {
+
+        const top =
+            data.slice(
+                0,
+                localDonutTop
+            );
+
+
+        const otherValue =
+            d3.sum(
+                data.slice(
+                    localDonutTop
+                ),
+                d => d.value
+            );
+
+
+        if (otherValue > 0) {
+
+            top.push({
+
+                Country: "อื่น ๆ",
+
+                value: otherValue
+
+            });
+
+        }
+
+
+        data = top;
+
+    }
+
+
+    const radius =
+        Math.min(
+            width,
+            height
+        ) / 3;
+
+
+    const svg =
+        container
+            .append("svg")
+            .attr(
+                "width",
+                width
+            )
+            .attr(
+                "height",
+                height
+            );
+
+
+    const g =
+        svg
+            .append("g")
+            .attr(
+                "transform",
+                `translate(${width / 2},${height / 2})`
+            );
+
+
+    const pie =
+        d3.pie()
+            .value(
+                d => d.value
+            );
+
+
+    const arc =
+        d3.arc()
+            .innerRadius(
+                radius * 0.55
+            )
+            .outerRadius(
+                radius
+            );
+
+
+    const arcs =
+        g
+            .selectAll("path")
+            .data(
+                pie(data)
+            )
+            .enter()
+            .append("path")
+            .attr(
+                "d",
+                arc
+            )
+            .attr(
+                "fill",
+                function (d, i) {
+
+                    return d.data.Country === "อื่น ๆ"
+                        ? "#cbd5e1"
+                        : d3.schemeTableau10[
+                            i %
+                            d3.schemeTableau10.length
+                        ];
+
+                }
+            )
+            .attr(
+                "stroke",
+                "#ffffff"
+            )
+            .attr(
+                "stroke-width",
+                2
+            );
+
+
+    arcs
+        .on(
+            "mousemove",
+            function (event, d) {
+
+                const total =
+                    d3.sum(
+                        data,
+                        x => x.value
+                    );
+
+
+                const percent =
+                    total
+                        ? (
+                            d.data.value /
+                            total *
+                            100
+                        ).toFixed(1)
+                        : 0;
+
+
+                showTooltip(
+
+                    event,
+
+                    `<b>${d.data.Country}</b>
+                    <br>มูลค่า: £${d3.format(",.2f")(d.data.value)}
+                    <br>สัดส่วน: ${percent}%`
+
+                );
+
+            }
+        )
+        .on(
+            "mouseout",
+            hideTooltip
+        );
+
+
+    g
+        .append("text")
+        .attr(
+            "text-anchor",
+            "middle"
+        )
+        .attr(
+            "dy",
+            "0.3em"
+        )
+        .style(
+            "font-size",
+            "16px"
+        )
+        .style(
+            "font-weight",
+            "bold"
+        )
+        .text(
+            "ยอดขาย"
+        );
+
 }
 
-// 3. Column Chart
+
+/* =========================================================
+   COLUMN CHART
+   ========================================================= */
+
 function renderColumnChart() {
-  const container = d3.select("#columnChart");
-  container.html("");
 
-  const bounds = container.node().getBoundingClientRect();
-  const margin = { top: 20, right: 20, bottom: 45, left: 70 };
-  const width = bounds.width - margin.left - margin.right;
-  const height = bounds.height - margin.top - margin.bottom;
+    const container =
+        d3.select(
+            "#columnChart"
+        );
 
-  // เปรียบเทียบ Sale/Return ได้เสมอ แม้ตัวกรองประเภทหลักเลือกไว้ประเภทเดียว
-  const columnDataset = globalDataset.filter(d => {
-    const matchCountry = selectedCountry === 'ALL' || d.Country === selectedCountry;
-    const matchYear = selectedYear === 'ALL' || String(d.Year) === String(selectedYear);
-    const matchMonth = selectedMonth === 'ALL' || String(d.Month) === String(selectedMonth);
-    return matchCountry && matchYear && matchMonth;
-  });
-  const typeData = Array.from(
-    d3.rollup(columnDataset, v => ({
-      Sales: d3.sum(v, d => d.LineAmount),
-      Count: v.length
-    }), d => d.TransactionType),
-    ([Type, stats]) => ({ Type, ...stats })
-  );
 
-  const svg = container.append("svg")
-    .attr("width", bounds.width)
-    .attr("height", bounds.height)
-    .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+    if (container.empty()) {
+        return;
+    }
 
-  const x = d3.scaleBand().domain(['Sale', 'Return/Cancelled']).range([0, width]).padding(0.45);
-  const y = d3.scaleLinear().domain([0, d3.max(typeData, d => d.Sales) * 1.15 || 100]).range([height, 0]);
 
-  svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x));
-  svg.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(d => `£${d/1000}k`));
+    container.html("");
 
-  // Axes Labels
-  svg.append("text")
-    .attr("class", "axis-label")
-    .attr("x", width / 2)
-    .attr("y", height + 38)
-    .attr("text-anchor", "middle")
-    .text("ประเภทรายการซื้อขาย");
 
-  svg.append("text")
-    .attr("class", "axis-label")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2)
-    .attr("y", -50)
-    .attr("text-anchor", "middle")
-    .text("มูลค่ารวม (£)");
+    const width =
+        container.node().clientWidth ||
+        600;
 
-  svg.selectAll("rect")
-    .data(typeData)
-    .enter()
-    .append("rect")
-    .attr("x", d => x(d.Type))
-    .attr("width", x.bandwidth())
-    .attr("fill", d => TYPE_COLORS[d.Type] || '#3b82f6')
-    .attr("rx", 6)
-    .attr("y", height)
-    .attr("height", 0)
-    .transition().duration(700).delay((d,i) => i * 120).ease(d3.easeCubicOut)
-    .attr("y", d => y(d.Sales))
-    .attr("height", d => height - y(d.Sales))
-    .selection()
-    .on("mouseover", (e, d) => showTooltip(e, `<b>${d.Type}</b><br/>มูลค่ารายการ: £${d3.format(",.2f")(d.Sales)}<br/>จำนวนรายการ: ${d3.format(",")(d.Count)}`))
-    .on("mouseout", hideTooltip);
+
+    const height =
+        container.node().clientHeight ||
+        350;
+
+
+    const data =
+        Array.from(
+
+            d3.rollup(
+
+                filteredData,
+
+                values =>
+                    d3.sum(
+                        values,
+                        d =>
+                            Number(
+                                d.LineAmount
+                            ) || 0
+                    ),
+
+                d =>
+                    d.TransactionType
+
+            ),
+
+            ([type, value]) => ({
+                type,
+                value
+            })
+
+        );
+
+
+    if (!data.length) {
+
+        showChartEmpty(
+            container
+        );
+
+        return;
+
+    }
+
+
+    const margin = {
+
+        top: 20,
+        right: 20,
+        bottom: 50,
+        left: 70
+
+    };
+
+
+    const innerWidth =
+        width -
+        margin.left -
+        margin.right;
+
+
+    const innerHeight =
+        height -
+        margin.top -
+        margin.bottom;
+
+
+    const svg =
+        container
+            .append("svg")
+            .attr(
+                "width",
+                width
+            )
+            .attr(
+                "height",
+                height
+            )
+            .append("g")
+            .attr(
+                "transform",
+                `translate(${margin.left},${margin.top})`
+            );
+
+
+    const x =
+        d3.scaleBand()
+            .domain(
+                data.map(
+                    d => d.type
+                )
+            )
+            .range(
+                [
+                    0,
+                    innerWidth
+                ]
+            )
+            .padding(0.35);
+
+
+    const max =
+        d3.max(
+            data,
+            d => d.value
+        ) || 1;
+
+
+    const y =
+        d3.scaleLinear()
+            .domain(
+                [
+                    0,
+                    max * 1.1
+                ]
+            )
+            .range(
+                [
+                    innerHeight,
+                    0
+                ]
+            );
+
+
+    svg
+        .append("g")
+        .attr(
+            "transform",
+            `translate(0,${innerHeight})`
+        )
+        .call(
+            d3.axisBottom(x)
+        );
+
+
+    svg
+        .append("g")
+        .call(
+            d3.axisLeft(y)
+                .ticks(5)
+                .tickFormat(
+                    d =>
+                        "£" +
+                        d3.format(",.0f")(d)
+                )
+        );
+
+
+    svg
+        .selectAll(".column")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr(
+            "class",
+            "column"
+        )
+        .attr(
+            "x",
+            d =>
+                x(d.type)
+        )
+        .attr(
+            "width",
+            x.bandwidth()
+        )
+        .attr(
+            "y",
+            d =>
+                y(d.value)
+        )
+        .attr(
+            "height",
+            d =>
+                innerHeight -
+                y(d.value)
+        )
+        .attr(
+            "rx",
+            6
+        )
+        .attr(
+            "fill",
+            d =>
+                d.type === "Sale"
+                    ? "#10b981"
+                    : "#ef4444"
+        )
+        .on(
+            "mousemove",
+            function (event, d) {
+
+                showTooltip(
+
+                    event,
+
+                    `<b>${d.type}</b>
+                    <br>มูลค่า: £${d3.format(",.2f")(d.value)}`
+
+                );
+
+            }
+        )
+        .on(
+            "mouseout",
+            hideTooltip
+        );
+
 }
 
-// 4. Scatter Plot (เพิ่ม Legend + ล็อกแกนไม่ให้ติดลบ)
+
+/* =========================================================
+   SCATTER
+   ========================================================= */
+
 function renderScatterChart() {
-  const container = d3.select("#scatterChart");
-  container.html("");
 
-  const bounds = container.node().getBoundingClientRect();
-  const margin = { top: 35, right: 20, bottom: 45, left: 55 };
-  const width = bounds.width - margin.left - margin.right;
-  const height = bounds.height - margin.top - margin.bottom;
+    const container =
+        d3.select(
+            "#scatterChart"
+        );
 
-  let scatterDataset = filteredData.filter(d => d.UnitPrice >= 0 && d.Quantity >= 0);
-  if (localScatterPrice !== 'all') scatterDataset = scatterDataset.filter(d => d.UnitPrice <= +localScatterPrice);
-  if (localScatterQty > 0) scatterDataset = scatterDataset.filter(d => d.Quantity >= localScatterQty);
-  const validData = scatterDataset;
-  // กระจายตัวอย่างให้เห็นภาพรวม ไม่เลือกเฉพาะรายการต้นไฟล์
-  const sampleData = validData.length > 400
-    ? d3.range(400).map(i => validData[Math.floor(i * (validData.length - 1) / 399)])
-    : validData;
 
-  const svg = container.append("svg")
-    .attr("width", bounds.width)
-    .attr("height", bounds.height);
+    if (container.empty()) {
+        return;
+    }
 
-  // Legend
-  const legend = svg.append("g")
-    .attr("transform", `translate(${margin.left}, 15)`);
 
-  legend.append("circle").attr("cx", 10).attr("cy", 0).attr("r", 6).attr("fill", TYPE_COLORS['Sale']);
-  legend.append("text").attr("x", 22).attr("y", 4).text("รายการขายปกติ (Sale)").style("font-size", "12px").style("fill", "#334155");
+    container.html("");
 
-  legend.append("circle").attr("cx", 180).attr("cy", 0).attr("r", 6).attr("fill", TYPE_COLORS['Return/Cancelled']);
-  legend.append("text").attr("x", 192).attr("y", 4).text("รายการคืนเงิน/ยกเลิก (Return)").style("font-size", "12px").style("fill", "#334155");
 
-  const g = svg.append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+    let data =
+        filteredData.filter(
+            d =>
+                Number.isFinite(
+                    Number(d.UnitPrice)
+                ) &&
+                Number.isFinite(
+                    Number(d.Quantity)
+                ) &&
+                Number(d.UnitPrice) >= 0
+        );
 
-  const xMax = d3.max(sampleData, d => d.UnitPrice) || 10;
-  const yMax = d3.max(sampleData, d => d.Quantity) || 10;
 
-  const x = d3.scaleLinear().domain([0, xMax * 1.05]).range([0, width]);
-  const y = d3.scaleLinear().domain([0, yMax * 1.05]).range([height, 0]);
+    if (
+        localScatterPrice !== "all"
+    ) {
 
-  const xAxisGroup = g.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).ticks(6));
-  const yAxisGroup = g.append("g").call(d3.axisLeft(y).ticks(6));
+        data =
+            data.filter(
+                d =>
+                    Number(
+                        d.UnitPrice
+                    ) <=
+                    Number(
+                        localScatterPrice
+                    )
+            );
 
-  // Axes Labels
-  g.append("text")
-    .attr("class", "axis-label")
-    .attr("x", width / 2)
-    .attr("y", height + 38)
-    .attr("text-anchor", "middle")
-    .text("ราคาต่อหน่วย / Unit Price (£)");
+    }
 
-  g.append("text")
-    .attr("class", "axis-label")
-    .attr("transform", "rotate(-90)")
-    .attr("x", -height / 2)
-    .attr("y", -40)
-    .attr("text-anchor", "middle")
-    .text("จำนวนชิ้น / Quantity");
 
-  // Clip Path
-  g.append("defs").append("clipPath")
-    .attr("id", "scatter-clip")
-    .append("rect")
-    .attr("width", width)
-    .attr("height", height);
+    if (
+        localScatterQty > 0
+    ) {
 
-  const scatterGroup = g.append("g").attr("clip-path", "url(#scatter-clip)");
+        data =
+            data.filter(
+                d =>
+                    Number(
+                        d.Quantity
+                    ) >=
+                    localScatterQty
+            );
 
-  const dots = scatterGroup.selectAll("circle")
-    .data(sampleData)
-    .enter()
-    .append("circle")
-    .attr("cx", d => x(d.UnitPrice))
-    .attr("cy", d => y(d.Quantity))
-    .attr("r", 5)
-    .attr("fill", d => TYPE_COLORS[d.TransactionType] || TYPE_COLORS['Sale'])
-    .attr("opacity", 0)
-    .transition().duration(550).delay((d,i) => (i % 40) * 8).attr("opacity", 0.75)
-    .selection()
-    .on("mouseover", (e, d) => showTooltip(e, `<b>${d.Description}</b><br/>ประเภท: ${d.TransactionType}<br/>ราคา: £${d.UnitPrice}<br/>จำนวน: ${d.Quantity} ชิ้น`))
-    .on("mouseout", hideTooltip);
+    }
 
-  // Zoom & Pan Constraints
-  const zoom = d3.zoom()
-    .scaleExtent([1, 10])
-    .translateExtent([[0, 0], [width, height]])
-    .extent([[0, 0], [width, height]])
-    .on("zoom", (event) => {
-      const newX = event.transform.rescaleX(x);
-      const newY = event.transform.rescaleY(y);
 
-      xAxisGroup.call(d3.axisBottom(newX).tickFormat(d => d < 0 ? "" : d));
-      yAxisGroup.call(d3.axisLeft(newY).tickFormat(d => d < 0 ? "" : d));
+    /*
+     * จำกัดจุดเพื่อไม่ให้ Browser หนัก
+     */
 
-      dots.attr("cx", d => newX(d.UnitPrice)).attr("cy", d => newY(d.Quantity));
-    });
+    if (data.length > 1000) {
 
-  svg.call(zoom);
+        data =
+            data.slice(
+                0,
+                1000
+            );
 
-  d3.select('#resetZoomBtn').on('click', () => {
-    svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
-  });
+    }
+
+
+    if (!data.length) {
+
+        showChartEmpty(
+            container
+        );
+
+        return;
+
+    }
+
+
+    const width =
+        container.node().clientWidth ||
+        600;
+
+
+    const height =
+        container.node().clientHeight ||
+        350;
+
+
+    const margin = {
+
+        top: 20,
+        right: 30,
+        bottom: 50,
+        left: 65
+
+    };
+
+
+    const innerWidth =
+        width -
+        margin.left -
+        margin.right;
+
+
+    const innerHeight =
+        height -
+        margin.top -
+        margin.bottom;
+
+
+    const maxPrice =
+        d3.max(
+            data,
+            d =>
+                Number(
+                    d.UnitPrice
+                )
+        ) || 1;
+
+
+    const maxQty =
+        d3.max(
+            data,
+            d =>
+                Number(
+                    d.Quantity
+                )
+        ) || 1;
+
+
+    const x =
+        d3.scaleLinear()
+            .domain(
+                [
+                    0,
+                    maxPrice * 1.05
+                ]
+            )
+            .range(
+                [
+                    0,
+                    innerWidth
+                ]
+            );
+
+
+    const y =
+        d3.scaleLinear()
+            .domain(
+                [
+                    0,
+                    maxQty * 1.05
+                ]
+            )
+            .range(
+                [
+                    innerHeight,
+                    0
+                ]
+            );
+
+
+    const svg =
+        container
+            .append("svg")
+            .attr(
+                "width",
+                width
+            )
+            .attr(
+                "height",
+                height
+            )
+            .append("g")
+            .attr(
+                "transform",
+                `translate(${margin.left},${margin.top})`
+            );
+
+
+    svg
+        .append("g")
+        .attr(
+            "transform",
+            `translate(0,${innerHeight})`
+        )
+        .call(
+            d3.axisBottom(x)
+        );
+
+
+    svg
+        .append("g")
+        .call(
+            d3.axisLeft(y)
+        );
+
+
+    svg
+        .selectAll(".dot")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr(
+            "class",
+            "dot"
+        )
+        .attr(
+            "cx",
+            d =>
+                x(
+                    Number(
+                        d.UnitPrice
+                    )
+                )
+        )
+        .attr(
+            "cy",
+            d =>
+                y(
+                    Number(
+                        d.Quantity
+                    )
+                )
+        )
+        .attr(
+            "r",
+            4
+        )
+        .attr(
+            "fill",
+            d =>
+                d.TransactionType ===
+                "Return/Cancelled"
+                    ? "#ef4444"
+                    : "#10b981"
+        )
+        .attr(
+            "opacity",
+            0.65
+        )
+        .on(
+            "mousemove",
+            function (event, d) {
+
+                showTooltip(
+
+                    event,
+
+                    `<b>${d.Description}</b>
+                    <br>ราคา: £${d3.format(",.2f")(d.UnitPrice)}
+                    <br>จำนวน: ${d3.format(",")(d.Quantity)}
+                    <br>ประเภท: ${d.TransactionType}`
+
+                );
+
+            }
+        )
+        .on(
+            "mouseout",
+            hideTooltip
+        );
+
+}
+
+
+/* =========================================================
+   EMPTY CHART
+   ========================================================= */
+
+function showChartEmpty(
+    container
+) {
+
+    container
+        .append("div")
+        .style(
+            "height",
+            "100%"
+        )
+        .style(
+            "display",
+            "flex"
+        )
+        .style(
+            "align-items",
+            "center"
+        )
+        .style(
+            "justify-content",
+            "center"
+        )
+        .style(
+            "color",
+            "#94a3b8"
+        )
+        .style(
+            "font-size",
+            "18px"
+        )
+        .text(
+            "ไม่พบข้อมูล"
+        );
+
+}
+
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+function showLoadingMessage() {
+
+    let box =
+        document.getElementById(
+            "dataLoading"
+        );
+
+
+    if (!box) {
+
+        box =
+            document.createElement(
+                "div"
+            );
+
+
+        box.id =
+            "dataLoading";
+
+
+        box.style.cssText = `
+            position:fixed;
+            top:20px;
+            right:20px;
+            z-index:99999;
+            padding:15px 20px;
+            background:#ffffff;
+            border-radius:12px;
+            box-shadow:0 5px 20px rgba(0,0,0,.15);
+            font-family:Sarabun,sans-serif;
+        `;
+
+
+        document.body.appendChild(
+            box
+        );
+
+    }
+
+
+    box.innerHTML =
+        "กำลังโหลดข้อมูล XLSB...";
+
+}
+
+
+/* =========================================================
+   HIDE LOADING
+   ========================================================= */
+
+function hideLoadingMessage() {
+
+    const box =
+        document.getElementById(
+            "dataLoading"
+        );
+
+
+    if (box) {
+
+        box.remove();
+
+    }
+
+}
+
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+function showError(error) {
+
+    hideLoadingMessage();
+
+
+    let box =
+        document.getElementById(
+            "dataLoadError"
+        );
+
+
+    if (box) {
+
+        box.remove();
+
+    }
+
+
+    box =
+        document.createElement(
+            "div"
+        );
+
+
+    box.id =
+        "dataLoadError";
+
+
+    box.style.cssText = `
+        position:fixed;
+        left:20px;
+        right:20px;
+        top:20px;
+        z-index:99999;
+        padding:25px;
+        background:#fff1f2;
+        color:#881337;
+        border:2px solid #fb7185;
+        border-radius:15px;
+        font-family:Sarabun,sans-serif;
+        box-shadow:0 10px 30px rgba(0,0,0,.2);
+    `;
+
+
+    box.innerHTML = `
+
+        <h2>
+            ไม่สามารถโหลดข้อมูล XLSB
+        </h2>
+
+        <p>
+            ไฟล์ที่ต้องการ:
+            <b>${DATA_URL}</b>
+        </p>
+
+        <p>
+            กรุณาตรวจสอบว่าไฟล์อยู่ในโฟลเดอร์เดียวกับ
+            <b>index.html</b>
+        </p>
+
+        <p>
+            รายละเอียด:
+            <b>${error.message || error}</b>
+        </p>
+
+    `;
+
+
+    document.body.appendChild(
+        box
+    );
+
 }
