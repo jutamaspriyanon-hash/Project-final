@@ -84,7 +84,7 @@ function addAxisLabel(g, {
         .text(text);
 
     if (rotate !== null) {
-        label.attr("transform", `rotate(${rotate},${x},${y})`);
+        label.attr("transform", `rotate(${rotate})`);
     }
 
     return label;
@@ -720,18 +720,13 @@ function renderBarChart() {
             : "มูลค่ารายการ (£)"
     });
 
-    /* ชื่อแกน Y: วางไว้ใน SVG และหมุนรอบตัวเองอย่างถูกต้อง */
-    g.append("text")
-        .attr("class", "axis-label")
-        .attr("transform", "rotate(-90)")
-        .attr("x", -height / 2)
-        .attr("y", -155)
-        .attr("text-anchor", "middle")
-        .style("font-size", "12px")
-        .style("font-weight", "600")
-        .style("fill", "#806f89")
-        .style("pointer-events", "none")
-        .text("รายชื่อสินค้า");
+    /* ชื่อแกน Y */
+    addAxisLabel(g, {
+        x: -height / 2,
+        y: -60,
+        text: "รายชื่อสินค้า",
+        rotate: -90
+    });
 
     /* =====================================================
        BARS + ANIMATION
@@ -749,9 +744,11 @@ function renderBarChart() {
         .attr("fill", (d, i) => BAR_COLORS[i % BAR_COLORS.length])
         .attr("width", 0);
 
-    bars.transition()
-        .duration(700)
-        .delay((d, i) => i * 45)
+    bars
+        .attr("width", 0)
+        .transition()
+        .duration(900)
+        .delay((d, i) => i * 60)
         .ease(d3.easeCubicOut)
         .attr("width", d =>
             x(
