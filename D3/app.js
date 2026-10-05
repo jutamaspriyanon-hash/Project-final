@@ -3,7 +3,10 @@
    XLSB VERSION - FIXED AXES / ZOOM / DONUT LEGEND
    ========================================================= */
 
-const DATA_URL = "Online_Retail_Cleaned_Final-1.xlsb";
+const DATA_URL = new URL(
+    "Online_Retail_Cleaned_Final-1.xlsb",
+    document.baseURI
+).href;
 
 let globalDataset = [];
 let filteredData = [];
@@ -39,10 +42,17 @@ const MONTH_NAMES_TH = [
     "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
 ];
 
-document.addEventListener("DOMContentLoaded", () => {
+function bootDashboard() {
+    console.log("Dashboard booting...");
     setupEvents();
     loadData();
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bootDashboard, { once: true });
+} else {
+    bootDashboard();
+}
 
 /* =========================================================
    HELPERS
@@ -201,6 +211,19 @@ async function ensureLibraries() {
 
 async function loadData() {
     try {
+        ["#barChart", "#donutChart", "#columnChart", "#scatterChart"].forEach(selector => {
+            const box = d3.select(selector);
+            if (!box.empty()) {
+                box.html("")
+                    .append("div")
+                    .style("padding", "80px")
+                    .style("text-align", "center")
+                    .style("color", "#806f89")
+                    .style("font-weight", "600")
+                    .text("กำลังโหลดข้อมูล...");
+            }
+        });
+
         console.log("กำลังเตรียม D3 + SheetJS...");
         await ensureLibraries();
         console.log("กำลังโหลด:", DATA_URL);
@@ -211,7 +234,10 @@ async function loadData() {
 
         const response = await fetch(
             DATA_URL + "?v=" + Date.now(),
-            { cache: "no-store" }
+            {
+                cache: "no-store",
+                credentials: "same-origin"
+            }
         );
 
         if (!response.ok) {
