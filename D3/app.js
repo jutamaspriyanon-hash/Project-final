@@ -1547,31 +1547,27 @@ function renderDonutChart() {
                LEGEND LEAVE
             ================================================= */
 
-            item.on(
-                "mouseleave",
-                function () {
+          item.on(
+    "mouseleave",
+    function () {
 
-                    paths
-
-                        .filter(
-                            p =>
-                                p.data.Country ===
-                                d.Country
-                        )
-
-                        .interrupt()
-
-                        .transition()
-                        .duration(150)
-
-                        .attr(
-                            "d",
-                            arc
-                        );
-
-                    hideTooltip();
-                }
+        paths
+            .filter(
+                p =>
+                    p.data.Country ===
+                    d.Country
+            )
+            .interrupt()
+            .transition()
+            .duration(150)
+            .attr(
+                "d",
+                arc
             );
+
+        hideTooltip();
+    }
+);
 
 
             /* =================================================
